@@ -1,0 +1,6 @@
+{
+  "name": "Yunshan Curio",
+  "description": "Curated Chinese artisan souvenirs — Jingdezhen porcelain, Longquan celadon tea sets, Suzhou silk, Hetian jade, and Beijing cinnabar lacquerware.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

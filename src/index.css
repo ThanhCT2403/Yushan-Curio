@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Cormorant Garamond", "Noto Serif SC", Georgia, serif;
+  --font-sans: "Plus Jakarta Sans", "Noto Sans SC", -apple-system, BlinkMacSystemFont, sans-serif;
+  --color-canvas: #FAF8F5;
+  --color-surface: #F2EFE9;
+  --color-ink: #1A1917;
+  --color-ink-muted: #5E5A54;
+  --color-border-hairline: #E4DFD6;
+  --color-cinnabar: #A83226;
+  --color-cinnabar-hover: #8C271D;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    background-color: #FAF8F5;
+    color: #1A1917;
+    font-family: "Plus Jakarta Sans", "Noto Sans SC", -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: #FAF8F5;
+    color: #1A1917;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: "Cormorant Garamond", "Noto Serif SC", Georgia, serif;
+  }
+
+  button, a, input, select, textarea {
+    outline-color: #A83226;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
