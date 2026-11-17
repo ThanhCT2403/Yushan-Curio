@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { Award, Heart, Menu, ShoppingBag, X } from 'lucide-react';
+import type { User } from 'firebase/auth';
+import { Award, Heart, History, LogIn, Menu, ShoppingBag, UserCheck, X } from 'lucide-react';
 import type { CurrencyCode, LanguageCode } from '../types/store';
 import { getTranslations } from '../utils/i18n';
 import {
+  type AppRoute,
   CURRENCY_CODES,
   CURRENCY_CONFIG,
   calculateLoyaltyPoints,
@@ -11,6 +13,8 @@ import {
 import { LanguageSwitcher } from './LanguageSwitcher';
 
 interface HeaderProps {
+  currentRoute: AppRoute;
+  authUser: User | null;
   bagCount: number;
   cartTotal: number;
   wishlistCount: number;
@@ -21,11 +25,15 @@ interface HeaderProps {
   onOpenBag: () => void;
   onOpenWishlist: () => void;
   onOpenOrderTracking: () => void;
+  onNavigateRoute: (route: AppRoute) => void;
+  onNavigateSection: (sectionId: string) => void;
   heroIsDark: boolean;
   hasAnnouncementBar?: boolean;
 }
 
 export function Header({
+  currentRoute,
+  authUser,
   bagCount,
   cartTotal,
   wishlistCount,
@@ -36,6 +44,8 @@ export function Header({
   onOpenBag,
   onOpenWishlist,
   onOpenOrderTracking,
+  onNavigateRoute,
+  onNavigateSection,
   heroIsDark,
   hasAnnouncementBar = false,
 }: HeaderProps) {
@@ -77,14 +87,14 @@ export function Header({
     };
   }, [loyaltyOpen]);
 
-  const navLinks = [
-    { href: '#collection', label: t.header.collection },
-    { href: '#craftsmanship', label: t.header.regions },
-    { href: '#collectors', label: t.header.collectors },
-    { href: '#footer-shipping', label: t.header.shipping },
-  ];
-
   const useLightText = !isScrolled && heroIsDark;
+  const isProductsActive =
+    currentRoute.page === 'products' || currentRoute.page === 'product-detail';
+  const isSignInActive = currentRoute.page === 'signin';
+  const isLoginActive = currentRoute.page === 'login';
+  const authShortLabel = authUser
+    ? (authUser.displayName?.split(' ')[0] || t.header.accountLink)
+    : t.header.logIn;
 
   return (
     <header
@@ -96,31 +106,47 @@ export function Header({
           : 'bg-transparent border-b border-transparent'
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 h-16 flex items-center justify-between gap-2 sm:gap-4 lg:gap-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-5 xl:px-10 h-16 flex items-center justify-between gap-2 sm:gap-3 xl:gap-6">
         {/* Zone 1: Single-element Brand Wordmark */}
         <a
-          href="#top"
-          className={`font-display text-lg sm:text-2xl font-semibold tracking-tight whitespace-nowrap shrink-0 transition-colors ${
+          href="/"
+          data-testid="header-brand-link"
+          onClick={(e) => {
+            e.preventDefault();
+            setMobileMenuOpen(false);
+            onNavigateRoute({ page: 'home' });
+          }}
+          className={`font-display text-lg sm:text-xl xl:text-2xl font-semibold tracking-tight whitespace-nowrap shrink-0 transition-colors ${
             useLightText ? 'text-[#FAF8F5]' : 'text-[#1A1917]'
           }`}
         >
           {t.brand.wordmark}
         </a>
 
-        {/* Zone 2: Concise single-line navigation items */}
+        {/* Zone 2: Concise single-line navigation links */}
         <nav
           aria-label={t.header.primaryNavAria}
-          className={`hidden lg:flex items-center gap-4 xl:gap-6 text-sm font-medium ${
+          className={`hidden lg:flex items-center gap-3 xl:gap-5 text-xs xl:text-sm font-medium ${
             useLightText ? 'text-[#FAF8F5]/85' : 'text-[#5E5A54]'
           }`}
         >
           <a
-            href="#collection"
+            href="/products"
+            data-testid="nav-products-page"
+            aria-current={isProductsActive ? 'page' : undefined}
+            onClick={(e) => {
+              e.preventDefault();
+              onNavigateRoute({ page: 'products' });
+            }}
             className={`transition-colors whitespace-nowrap shrink-0 py-1 ${
-              useLightText ? 'hover:text-[#FAF8F5]' : 'hover:text-[#1A1917]'
+              isProductsActive
+                ? 'text-[#A83226] font-semibold underline underline-offset-4'
+                : useLightText
+                  ? 'hover:text-[#FAF8F5]'
+                  : 'hover:text-[#1A1917]'
             }`}
           >
-            {t.header.collection}
+            {t.header.productsPage}
           </a>
 
           <button
@@ -145,17 +171,18 @@ export function Header({
             <span className="tabular-nums">({wishlistCount})</span>
           </button>
 
-          {navLinks.slice(1).map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className={`transition-colors whitespace-nowrap shrink-0 py-1 ${
-                useLightText ? 'hover:text-[#FAF8F5]' : 'hover:text-[#1A1917]'
-              }`}
-            >
-              {link.label}
-            </a>
-          ))}
+          <a
+            href="/#craftsmanship"
+            onClick={(e) => {
+              e.preventDefault();
+              onNavigateSection('craftsmanship');
+            }}
+            className={`transition-colors whitespace-nowrap shrink-0 py-1 ${
+              useLightText ? 'hover:text-[#FAF8F5]' : 'hover:text-[#1A1917]'
+            }`}
+          >
+            {t.header.regions}
+          </a>
 
           <button
             type="button"
@@ -169,9 +196,9 @@ export function Header({
           </button>
         </nav>
 
-        {/* Zone 3: Language Switcher + Currency Switcher + Loyalty Tracker + Bag CTA */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          <div className="hidden sm:flex items-center gap-2 shrink-0">
+        {/* Zone 3: Language, Currency, Account Popover, Auth, and Bag CTA */}
+        <div className="flex items-center gap-1.5 xl:gap-2 shrink-0">
+          <div className="hidden sm:flex items-center gap-1.5 xl:gap-2 shrink-0">
             <LanguageSwitcher
               language={language}
               onChangeLanguage={onChangeLanguage}
@@ -236,10 +263,15 @@ export function Header({
                 className="fixed sm:absolute left-4 right-4 sm:left-auto sm:right-0 mt-2 sm:w-72 rounded-xl border border-[#E4DFD6] bg-[#FAF8F5] p-4 shadow-xl text-left text-[#1A1917] z-40"
               >
                 <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-[#E4DFD6]">
-                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1A1917]">
-                    <Award className="w-4 h-4 text-[#A83226]" aria-hidden="true" />
-                    <span>{t.header.loyaltyTitle}</span>
-                  </span>
+                  <div>
+                    <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-[#5E5A54]">
+                      {t.header.accountSectionLabel}
+                    </p>
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1A1917] mt-0.5">
+                      <Award className="w-4 h-4 text-[#A83226]" aria-hidden="true" />
+                      <span>{t.header.loyaltyTitle}</span>
+                    </span>
+                  </div>
                   <span className="text-sm font-semibold text-[#A83226] tabular-nums">
                     +{formattedPoints} {t.header.pointsUnit}
                   </span>
@@ -253,19 +285,145 @@ export function Header({
                 </p>
                 <p className="mt-1 text-[11px] text-[#5E5A54]">{t.header.loyaltyRateNote}</p>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLoyaltyOpen(false);
-                    onOpenBag();
-                  }}
-                  className="mt-3 w-full min-h-[36px] px-3 py-1.5 rounded-lg bg-[#1A1917] text-[#FAF8F5] text-xs font-semibold hover:bg-[#A83226] transition-colors cursor-pointer"
-                >
-                  {t.header.loyaltyOpenBag}
-                </button>
+                <div className="mt-3 pt-3 border-t border-[#E4DFD6] flex flex-col gap-2">
+                  {authUser ? (
+                    <a
+                      href="/login"
+                      data-testid="account-login-link"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setLoyaltyOpen(false);
+                        onNavigateRoute({ page: 'login' });
+                      }}
+                      className="w-full min-h-[40px] px-3 py-2 rounded-lg border border-[#E4DFD6] bg-[#FAF8F5] text-[#1A1917] text-xs font-semibold hover:border-[#1A1917] hover:bg-[#F2EFE9] transition-colors inline-flex items-center justify-center gap-1.5"
+                    >
+                      <UserCheck className="w-3.5 h-3.5 text-[#2A5A3B]" aria-hidden="true" />
+                      <span>{t.header.accountLink}</span>
+                    </a>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      <a
+                        href="/signin"
+                        data-testid="account-signin-link"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setLoyaltyOpen(false);
+                          onNavigateRoute({ page: 'signin' });
+                        }}
+                        className="min-h-[40px] px-3 py-2 rounded-lg border border-[#E4DFD6] bg-[#FAF8F5] text-[#1A1917] text-xs font-semibold hover:border-[#1A1917] hover:bg-[#F2EFE9] transition-colors inline-flex items-center justify-center gap-1.5"
+                      >
+                        <span>{t.header.signIn}</span>
+                      </a>
+                      <a
+                        href="/login"
+                        data-testid="account-login-link"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setLoyaltyOpen(false);
+                          onNavigateRoute({ page: 'login' });
+                        }}
+                        className="min-h-[40px] px-3 py-2 rounded-lg border border-[#E4DFD6] bg-[#FAF8F5] text-[#1A1917] text-xs font-semibold hover:border-[#1A1917] hover:bg-[#F2EFE9] transition-colors inline-flex items-center justify-center gap-1.5"
+                      >
+                        <LogIn className="w-3.5 h-3.5 text-[#A83226]" aria-hidden="true" />
+                        <span>{t.header.logIn}</span>
+                      </a>
+                    </div>
+                  )}
+
+                  <a
+                    href="/#order-history"
+                    data-testid="account-order-history-link"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setLoyaltyOpen(false);
+                      onNavigateSection('order-history');
+                    }}
+                    className="w-full min-h-[40px] px-3 py-2 rounded-lg border border-[#E4DFD6] bg-[#F2EFE9]/70 text-[#1A1917] text-xs font-semibold hover:border-[#1A1917] hover:bg-[#F2EFE9] transition-colors inline-flex items-center justify-center gap-1.5"
+                  >
+                    <History className="w-3.5 h-3.5 text-[#A83226]" aria-hidden="true" />
+                    <span>{t.header.orderHistoryLink}</span>
+                  </a>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoyaltyOpen(false);
+                      onOpenBag();
+                    }}
+                    className="w-full min-h-[40px] px-3 py-2 rounded-lg bg-[#1A1917] text-[#FAF8F5] text-xs font-semibold hover:bg-[#A83226] transition-colors cursor-pointer"
+                  >
+                    {t.header.loyaltyOpenBag}
+                  </button>
+                </div>
               </div>
             )}
           </div>
+
+          {authUser ? (
+            <a
+              href="/login"
+              data-testid="header-account-button"
+              aria-current={isLoginActive || isSignInActive ? 'page' : undefined}
+              onClick={(e) => {
+                e.preventDefault();
+                setMobileMenuOpen(false);
+                onNavigateRoute({ page: 'login' });
+              }}
+              className={`hidden md:inline-flex items-center gap-1.5 px-3 py-2 min-h-[38px] sm:min-h-[40px] rounded-lg border text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
+                isLoginActive || isSignInActive
+                  ? 'border-[#A83226] bg-[#A83226]/10 text-[#A83226]'
+                  : useLightText
+                    ? 'border-[#FAF8F5]/30 bg-[#1A1917]/40 text-[#FAF8F5] hover:bg-[#FAF8F5]/10'
+                    : 'border-[#E4DFD6] bg-[#FAF8F5]/90 text-[#1A1917] hover:border-[#1A1917] hover:bg-[#F2EFE9]'
+              }`}
+            >
+              <UserCheck className="w-3.5 h-3.5 text-[#2A5A3B] shrink-0" aria-hidden="true" />
+              <span>{authShortLabel}</span>
+            </a>
+          ) : (
+            <div className="hidden md:flex items-center gap-1.5 shrink-0">
+              <a
+                href="/signin"
+                data-testid="header-signin-button"
+                aria-current={isSignInActive ? 'page' : undefined}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setMobileMenuOpen(false);
+                  onNavigateRoute({ page: 'signin' });
+                }}
+                className={`inline-flex items-center justify-center px-2.5 xl:px-3 py-2 min-h-[38px] sm:min-h-[40px] rounded-lg border text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
+                  isSignInActive
+                    ? 'border-[#A83226] bg-[#A83226]/10 text-[#A83226]'
+                    : useLightText
+                      ? 'border-[#FAF8F5]/30 bg-transparent text-[#FAF8F5] hover:bg-[#FAF8F5]/10'
+                      : 'border-[#E4DFD6] bg-[#FAF8F5]/90 text-[#1A1917] hover:border-[#1A1917] hover:bg-[#F2EFE9]'
+                }`}
+              >
+                {t.header.signIn}
+              </a>
+
+              <a
+                href="/login"
+                data-testid="header-login-button"
+                aria-current={isLoginActive ? 'page' : undefined}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setMobileMenuOpen(false);
+                  onNavigateRoute({ page: 'login' });
+                }}
+                className={`inline-flex items-center gap-1.5 px-2.5 xl:px-3 py-2 min-h-[38px] sm:min-h-[40px] rounded-lg border text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
+                  isLoginActive
+                    ? 'border-[#A83226] bg-[#A83226] text-[#FAF8F5]'
+                    : useLightText
+                      ? 'border-[#FAF8F5]/40 bg-[#FAF8F5]/15 text-[#FAF8F5] hover:bg-[#FAF8F5]/25'
+                      : 'border-[#1A1917]/25 bg-[#F2EFE9] text-[#1A1917] hover:border-[#A83226] hover:text-[#A83226]'
+                }`}
+              >
+                <LogIn className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                <span>{t.header.logIn}</span>
+              </a>
+            </div>
+          )}
 
           <button
             type="button"
@@ -286,7 +444,7 @@ export function Header({
             type="button"
             onClick={onOpenBag}
             aria-label={`${t.header.openBagAria} (${bagCount})`}
-            className={`inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 min-h-[38px] sm:min-h-[40px] rounded-lg text-xs font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 xl:px-4 py-2 sm:py-2.5 min-h-[38px] sm:min-h-[40px] rounded-lg text-xs font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
               useLightText
                 ? 'bg-[#E5C185] text-[#1A120C] hover:bg-[#FAF8F5]'
                 : 'bg-[#1A1917] text-[#FAF8F5] hover:bg-[#A83226]'
@@ -308,6 +466,9 @@ export function Header({
             data-testid="mobile-loyalty-tracker"
             className="rounded-lg border border-[#E4DFD6] bg-[#F2EFE9] px-3.5 py-2.5 text-xs"
           >
+            <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-[#5E5A54] mb-1">
+              {t.header.accountSectionLabel}
+            </p>
             <div className="flex items-center justify-between gap-2 font-semibold text-[#1A1917]">
               <span className="inline-flex items-center gap-1.5">
                 <Award className="w-3.5 h-3.5 text-[#A83226]" aria-hidden="true" />
@@ -318,7 +479,84 @@ export function Header({
               </span>
             </div>
             <p className="mt-1 text-[11px] text-[#5E5A54]">{t.header.loyaltyRedeemNote}</p>
+            {authUser ? (
+              <div className="mt-2.5 grid grid-cols-2 gap-2">
+                <a
+                  href="/login"
+                  data-testid="mobile-login-link"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setMobileMenuOpen(false);
+                    onNavigateRoute({ page: 'login' });
+                  }}
+                  className="min-h-[40px] px-3 py-2 rounded-lg border border-[#E4DFD6] bg-[#FAF8F5] text-[#1A1917] text-xs font-semibold hover:border-[#1A1917] transition-colors inline-flex items-center justify-center gap-1.5"
+                >
+                  <UserCheck className="w-3.5 h-3.5 text-[#2A5A3B]" aria-hidden="true" />
+                  <span>{authShortLabel}</span>
+                </a>
+
+                <a
+                  href="/#order-history"
+                  data-testid="mobile-order-history-link"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setMobileMenuOpen(false);
+                    onNavigateSection('order-history');
+                  }}
+                  className="min-h-[40px] px-3 py-2 rounded-lg border border-[#E4DFD6] bg-[#FAF8F5] text-[#1A1917] text-xs font-semibold hover:border-[#1A1917] transition-colors inline-flex items-center justify-center gap-1.5"
+                >
+                  <History className="w-3.5 h-3.5 text-[#A83226]" aria-hidden="true" />
+                  <span>{t.header.orderHistoryLink}</span>
+                </a>
+              </div>
+            ) : (
+              <div className="mt-2.5 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <a
+                    href="/signin"
+                    data-testid="mobile-signin-link"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setMobileMenuOpen(false);
+                      onNavigateRoute({ page: 'signin' });
+                    }}
+                    className="min-h-[40px] px-3 py-2 rounded-lg border border-[#E4DFD6] bg-[#FAF8F5] text-[#1A1917] text-xs font-semibold hover:border-[#1A1917] transition-colors inline-flex items-center justify-center gap-1.5"
+                  >
+                    <span>{t.header.signIn}</span>
+                  </a>
+
+                  <a
+                    href="/login"
+                    data-testid="mobile-login-link"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setMobileMenuOpen(false);
+                      onNavigateRoute({ page: 'login' });
+                    }}
+                    className="min-h-[40px] px-3 py-2 rounded-lg border border-[#1A1917]/25 bg-[#FAF8F5] text-[#1A1917] text-xs font-semibold hover:border-[#1A1917] transition-colors inline-flex items-center justify-center gap-1.5"
+                  >
+                    <LogIn className="w-3.5 h-3.5 text-[#A83226]" aria-hidden="true" />
+                    <span>{t.header.logIn}</span>
+                  </a>
+                </div>
+
+                <a
+                  href="/#order-history"
+                  data-testid="mobile-order-history-link"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setMobileMenuOpen(false);
+                    onNavigateSection('order-history');
+                  }}
+                  className="w-full min-h-[40px] px-3 py-2 rounded-lg border border-[#E4DFD6] bg-[#FAF8F5] text-[#1A1917] text-xs font-semibold hover:border-[#1A1917] transition-colors inline-flex items-center justify-center gap-1.5"
+                >
+                  <History className="w-3.5 h-3.5 text-[#A83226]" aria-hidden="true" />
+                  <span>{t.header.orderHistoryLink}</span>
+                </a>
+              </div>
+            )}
           </div>
+
           <div className="sm:hidden flex items-center justify-between gap-2 pb-1">
             <LanguageSwitcher
               language={language}
@@ -344,6 +582,32 @@ export function Header({
               </select>
             </div>
           </div>
+
+          <a
+            href="/"
+            onClick={(e) => {
+              e.preventDefault();
+              setMobileMenuOpen(false);
+              onNavigateRoute({ page: 'home' });
+            }}
+            className="py-2 text-sm font-medium text-[#1A1917] hover:text-[#A83226] transition-colors"
+          >
+            {t.header.home}
+          </a>
+
+          <a
+            href="/products"
+            data-testid="mobile-products-link"
+            onClick={(e) => {
+              e.preventDefault();
+              setMobileMenuOpen(false);
+              onNavigateRoute({ page: 'products' });
+            }}
+            className="py-2 text-sm font-medium text-[#1A1917] hover:text-[#A83226] transition-colors"
+          >
+            {t.header.productsPage}
+          </a>
+
           <button
             type="button"
             onClick={() => {
@@ -360,16 +624,19 @@ export function Header({
               {t.header.wishlist} <span className="tabular-nums">({wishlistCount})</span>
             </span>
           </button>
-          {navLinks.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              onClick={() => setMobileMenuOpen(false)}
-              className="py-2 text-sm font-medium text-[#1A1917] hover:text-[#A83226] transition-colors"
-            >
-              {link.label}
-            </a>
-          ))}
+
+          <a
+            href="/#craftsmanship"
+            onClick={(e) => {
+              e.preventDefault();
+              setMobileMenuOpen(false);
+              onNavigateSection('craftsmanship');
+            }}
+            className="py-2 text-sm font-medium text-[#1A1917] hover:text-[#A83226] transition-colors"
+          >
+            {t.header.regions}
+          </a>
+
           <button
             type="button"
             data-testid="mobile-order-tracking"

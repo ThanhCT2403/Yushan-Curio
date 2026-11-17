@@ -51,6 +51,50 @@ export interface TranslationDictionary {
     loyaltyRedeemNote: string;
     loyaltyEmptyHint: string;
     loyaltyOpenBag: string;
+    accountSectionLabel: string;
+    orderHistoryLink: string;
+    home: string;
+    productsPage: string;
+    signIn: string;
+    logIn: string;
+    accountLink: string;
+    signOut: string;
+  };
+  pages: {
+    listProductsEyebrow: string;
+    listProductsHeading: string;
+    listProductsSubtitle: string;
+    openAllProductsCta: string;
+    backToProducts: string;
+    backToHome: string;
+    notFoundTitle: string;
+    notFoundDescription: string;
+    loginEyebrow: string;
+    loginHeading: string;
+    loginSubtitle: string;
+    signinEyebrow: string;
+    signinHeading: string;
+    signinSubtitle: string;
+    switchToSigninPrompt: string;
+    switchToLoginPrompt: string;
+    loginStoryTitle: string;
+    loginStoryBody: string;
+    loginBenefitWishlist: string;
+    loginBenefitOrders: string;
+    loginBenefitUpdates: string;
+    continueWithGoogle: string;
+    signingIn: string;
+    signOutButton: string;
+    signedInBadge: string;
+    accountProfileHeading: string;
+    syncedWishlistLabel: string;
+    browseProductsCta: string;
+    orderHistoryCta: string;
+    authPopupClosedError: string;
+    authPopupBlockedError: string;
+    authGenericError: string;
+    unverifiedEmailError: string;
+    syncActiveNote: string;
   };
   breadcrumb: {
     navAria: string;
@@ -175,6 +219,20 @@ export interface TranslationDictionary {
       }
     >;
   };
+  homeShowcase: {
+    eyebrow: string;
+    heading: string;
+    subtitle: string;
+    browseAllCta: string;
+    exploreDisciplineCta: string;
+    disciplines: Record<
+      Exclude<import('../types/store').SouvenirCategory, 'All'>,
+      {
+        region: string;
+        summary: string;
+      }
+    >;
+  };
   newsletter: {
     eyebrow: string;
     heading: string;
@@ -199,6 +257,7 @@ export interface TranslationDictionary {
     navCollection: string;
     navWorkshops: string;
     navCollectors: string;
+    navOrderHistory: string;
     navTrackOrder: string;
     orderLookupHeading: string;
     orderLookupDescription: string;
@@ -238,6 +297,10 @@ export interface TranslationDictionary {
     sharedFeedback: string;
     linkCopiedFeedback: string;
     hoverToZoom: string;
+    zoomInspectingHint: string;
+    zoomLevelAria: string;
+    zoomActivateAria: string;
+    zoomResetAria: string;
     writeReviewTitle: string;
     ratingLabel: string;
     starAriaSuffix: string;
@@ -252,6 +315,22 @@ export interface TranslationDictionary {
     authorError: string;
     commentError: string;
     verifiedCollector: string;
+    writeReviewCta: string;
+    allRatings: string;
+    starFilterSuffix: string;
+    noReviewsForRating: string;
+    showAllRatings: string;
+    selectProductLabel: string;
+    reviewingPiecePrefix: string;
+    ratingDistributionAria: string;
+    shareSectionLabel: string;
+    shareFacebook: string;
+    shareTwitter: string;
+    sharePinterest: string;
+    shareNativeButton: string;
+    sharedToPrefix: string;
+    copiedForPrefix: string;
+    openComposerPrefix: string;
   };
   wishlist: {
     dialogAria: string;
@@ -317,6 +396,11 @@ export interface TranslationDictionary {
     cashOnDelivery: string;
     optionalGiftNote: string;
     giftNotePlaceholder: string;
+    giftMessageTitle: string;
+    giftMessageSubtitle: string;
+    giftMessagePlaceholder: string;
+    giftMessageClear: string;
+    giftMessageSavedBadge: string;
     continueExploring: string;
     total: string;
     proceedToCheckout: string;
@@ -409,6 +493,31 @@ export interface TranslationDictionary {
     emptyOrderError: string;
     notFoundError: string;
   };
+  orderHistory: {
+    eyebrow: string;
+    heading: string;
+    subtitle: string;
+    totalOrdersSingular: string;
+    totalOrdersPlural: string;
+    scrollRegionAria: string;
+    filterGroupAria: string;
+    filterAll: string;
+    itemsSingular: string;
+    itemsPlural: string;
+    qtyLabel: string;
+    totalLabel: string;
+    recentOrderBadge: string;
+    archiveOrderBadge: string;
+    giftNoteLabel: string;
+    estimatedDeliveryLabel: string;
+    placedOnPrefix: string;
+    recipientPrefix: string;
+    viewDetailsButton: string;
+    reorderButton: string;
+    emptyTitle: string;
+    emptyFiltered: string;
+    resetFilter: string;
+  };
   notifyModal: {
     title: string;
     closeAria: string;
@@ -489,6 +598,56 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationDictionary> = {
       loyaltyRedeemNote: 'Points can be redeemed at checkout toward future keepsakes.',
       loyaltyEmptyHint: 'Add an artifact to preview points earned on your order.',
       loyaltyOpenBag: 'Open Bag & Checkout',
+      accountSectionLabel: 'Collector Account',
+      orderHistoryLink: 'Order History',
+      home: 'Home',
+      productsPage: 'Products',
+      signIn: 'Sign In',
+      logIn: 'Log In',
+      accountLink: 'Account',
+      signOut: 'Sign Out',
+    },
+    pages: {
+      listProductsEyebrow: 'Complete Atelier Catalog',
+      listProductsHeading: 'All Handcrafted Artifacts',
+      listProductsSubtitle:
+        'Filter our full archive of kiln-fired porcelain, tea vessels, carved lacquerware, and silk keepsakes.',
+      openAllProductsCta: 'View All Products Page',
+      backToProducts: 'Back to All Products',
+      backToHome: 'Back to Storefront',
+      notFoundTitle: 'Craft Piece Not Found',
+      notFoundDescription:
+        'The requested artifact could not be located in our current seasonal catalog. Explore all available pieces below.',
+      loginEyebrow: 'Returning Collector',
+      loginHeading: 'Log in to Your Collector Account',
+      loginSubtitle:
+        'Welcome back. Log in with Google to access your synced wishlist keepsakes, recently admired pieces, and order status.',
+      signinEyebrow: 'Collector Registry',
+      signinHeading: 'Sign in to Yunshan Curio',
+      signinSubtitle:
+        'Create or connect your collector profile with Google to save favorites across devices and track regional workshop dispatches.',
+      switchToSigninPrompt: 'New to Yunshan Curio?',
+      switchToLoginPrompt: 'Already a registered collector?',
+      loginStoryTitle: 'Preserving Craft Provenance Across Every Visit',
+      loginStoryBody:
+        'Each Yunshan Curio piece ships from regional studio workshops with bilingual provenance documentation. Sign in with Google to synchronize your personal wishlist and collector preferences securely.',
+      loginBenefitWishlist: 'Sync saved artifacts and wishlist selections across devices',
+      loginBenefitOrders: 'Fast access to recent purchases, gift notes, and delivery status',
+      loginBenefitUpdates: 'Verified collector profile backed by cloud persistence',
+      continueWithGoogle: 'Continue with Google',
+      signingIn: 'Signing in…',
+      signOutButton: 'Sign Out',
+      signedInBadge: 'Signed In',
+      accountProfileHeading: 'Collector Profile',
+      syncedWishlistLabel: 'Saved Keepsakes Synced',
+      browseProductsCta: 'Explore Product Catalog',
+      orderHistoryCta: 'View Order History',
+      authPopupClosedError: 'Google sign-in window was closed before completing authentication.',
+      authPopupBlockedError:
+        'Your browser blocked the sign-in popup. Allow popups for this site and try again.',
+      authGenericError: 'Unable to sign in right now. Please try again in a moment.',
+      unverifiedEmailError: 'A verified Google account email is required to sync your profile.',
+      syncActiveNote: 'Your wishlist and viewed crafts are synced with your collector account.',
     },
     breadcrumb: {
       navAria: 'Breadcrumb navigation',
@@ -666,6 +825,32 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationDictionary> = {
         },
       },
     },
+    homeShowcase: {
+      eyebrow: 'Four Living Craft Traditions',
+      heading: 'Explore Regional Workshops by Discipline',
+      subtitle:
+        'Each discipline represents a distinct Chinese kiln, lacquer, or silk lineage—curated directly from family studios before entering our full catalog.',
+      browseAllCta: 'Browse Full Product Catalog',
+      exploreDisciplineCta: 'Explore Collection',
+      disciplines: {
+        Porcelain: {
+          region: 'Jingdezhen, Dehua & Ruzhou',
+          summary: 'Cobalt landscape jars, sky-blue Ru crackle glaze, and ivory Blanc de Chine vessels.',
+        },
+        'Tea Ware': {
+          region: 'Longquan & Yixing',
+          summary: 'Wood-ash celadon gongfu sets, zisha clay teapots, and carved bamboo tea trays.',
+        },
+        'Lacquer & Jade': {
+          region: 'Beijing, Yangzhou & Fuzhou',
+          summary: 'Multi-layer carved cinnabar lacquerware, bodiless silk lacquer, and water-ground jade.',
+        },
+        'Silk & Paper': {
+          region: 'Suzhou, Huzhou & Xuancheng',
+          summary: 'Mulberry silk embroidery scarves, fourth-generation calligraphy brushes, and xuan fans.',
+        },
+      },
+    },
     newsletter: {
       eyebrow: 'Kiln & Atelier Dispatch',
       heading: 'Seasonal Updates & Artisan Stories',
@@ -694,6 +879,7 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationDictionary> = {
       navCollection: 'Souvenir Collection',
       navWorkshops: 'Regional Workshops',
       navCollectors: 'Collector Notes',
+      navOrderHistory: 'Order History',
       navTrackOrder: 'Track Order',
       orderLookupHeading: 'Order Status Lookup',
       orderLookupDescription:
@@ -727,13 +913,17 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationDictionary> = {
       reviewsHeading: 'Customer Reviews',
       reviewsSubtitle: 'Verified collector feedback on craftsmanship, finish, and export packaging.',
       noReviews: 'No customer reviews yet for this piece.',
-      relatedHeading: 'You might also like',
-      relatedSubtitleSuffix: 'and complementary regional workshop pieces.',
+      relatedHeading: 'Recommended for you',
+      relatedSubtitleSuffix: 'handcrafted companions from the same craft tradition',
       share: 'Share',
       shareAria: 'Share this artifact',
       sharedFeedback: 'Shared',
       linkCopiedFeedback: 'Link Copied',
-      hoverToZoom: 'Hover to zoom',
+      hoverToZoom: 'Hover to inspect craftsmanship',
+      zoomInspectingHint: 'Detail View · Move cursor to pan',
+      zoomLevelAria: 'Toggle zoom magnification',
+      zoomActivateAria: 'Zoom in to inspect craftsmanship',
+      zoomResetAria: 'Reset product zoom',
       writeReviewTitle: 'Share Your Feedback',
       ratingLabel: 'Your Rating',
       starAriaSuffix: 'stars',
@@ -748,6 +938,22 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationDictionary> = {
       authorError: 'Please enter your name (at least 2 characters).',
       commentError: 'Please write at least 5 characters of feedback.',
       verifiedCollector: 'Collector',
+      writeReviewCta: 'Write a Review',
+      allRatings: 'All Ratings',
+      starFilterSuffix: 'stars',
+      noReviewsForRating: 'No reviews match this star rating yet.',
+      showAllRatings: 'Show all reviews',
+      selectProductLabel: 'Artifact Reviewed',
+      reviewingPiecePrefix: 'Reviewing',
+      ratingDistributionAria: 'Star rating breakdown',
+      shareSectionLabel: 'Share this piece',
+      shareFacebook: 'Facebook',
+      shareTwitter: 'Twitter',
+      sharePinterest: 'Pinterest',
+      shareNativeButton: 'Copy Link',
+      sharedToPrefix: 'Shared via native sheet for',
+      copiedForPrefix: 'Link copied for',
+      openComposerPrefix: 'Open',
     },
     wishlist: {
       dialogAria: 'Saved Wishlist',
@@ -815,6 +1021,11 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationDictionary> = {
       cashOnDelivery: 'Cash on Delivery',
       optionalGiftNote: 'Optional Gift Note',
       giftNotePlaceholder: 'Handwritten message for your recipient...',
+      giftMessageTitle: 'Personalized Gift Message (Optional)',
+      giftMessageSubtitle: 'Included on your bilingual provenance gift card with your order.',
+      giftMessagePlaceholder: 'Write a personal dedication or blessing for the recipient...',
+      giftMessageClear: 'Clear note',
+      giftMessageSavedBadge: 'Saved with bag',
       continueExploring: 'Continue Exploring',
       total: 'Total',
       proceedToCheckout: 'Proceed to Checkout',
@@ -912,6 +1123,31 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationDictionary> = {
       notFoundError:
         'No shipment matched that email and order number combination. Verify both fields and try again.',
     },
+    orderHistory: {
+      eyebrow: 'Collector Account',
+      heading: 'Order History',
+      subtitle: 'Review your past artisanal purchases, fulfillment status, and provenance notes.',
+      totalOrdersSingular: 'order',
+      totalOrdersPlural: 'orders',
+      scrollRegionAria: 'Scrollable list of past purchases',
+      filterGroupAria: 'Filter order history by status',
+      filterAll: 'All Orders',
+      itemsSingular: 'piece',
+      itemsPlural: 'pieces',
+      qtyLabel: 'Qty',
+      totalLabel: 'Order Total',
+      recentOrderBadge: 'Recent Order',
+      archiveOrderBadge: 'Past Purchase',
+      giftNoteLabel: 'Gift Note',
+      estimatedDeliveryLabel: 'Shipping Update',
+      placedOnPrefix: 'Purchased',
+      recipientPrefix: 'Ship to',
+      viewDetailsButton: 'Inspect Status',
+      reorderButton: 'Reorder Items',
+      emptyTitle: 'No past purchases yet',
+      emptyFiltered: 'No orders match the selected fulfillment status.',
+      resetFilter: 'Show All Orders',
+    },
     notifyModal: {
       title: 'Restock Alert',
       closeAria: 'Close restock notification modal',
@@ -1001,6 +1237,55 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationDictionary> = {
       loyaltyRedeemNote: '积分可在结账时直接抵扣礼器订单金额。',
       loyaltyEmptyHint: '添加心仪礼器至购物袋，即可实时查看预计可获积分。',
       loyaltyOpenBag: '查看购物袋与结算',
+      accountSectionLabel: '藏家账户',
+      orderHistoryLink: '历史订单',
+      home: '首页',
+      productsPage: '全部藏品',
+      signIn: '加入名录',
+      logIn: '账号登录',
+      accountLink: '我的账户',
+      signOut: '退出登录',
+    },
+    pages: {
+      listProductsEyebrow: '云山礼器全览目录',
+      listProductsHeading: '全部传统手作藏品',
+      listProductsSubtitle:
+        '按窑口品类、价格区间与关键字探索景德镇瓷器、龙泉青釉茶具、雕漆玉雕与苏绣文房全系列器物。',
+      openAllProductsCta: '进入全部藏品页',
+      backToProducts: '返回全部藏品',
+      backToHome: '返回首页',
+      notFoundTitle: '未找到该件器物',
+      notFoundDescription:
+        '当前藏品目录中暂未找到对应链接的手作器物，您可返回目录页浏览全部典藏。',
+      loginEyebrow: '藏家账号登录',
+      loginHeading: '登录云山礼器藏家账户',
+      loginSubtitle:
+        '欢迎回到云山礼器。使用 Google 账号登录，即刻同步您的心愿单藏品、近期鉴赏记录与订单物流进度。',
+      signinEyebrow: '藏家名录注册',
+      signinHeading: '加入云山礼器藏家名录',
+      signinSubtitle:
+        '通过 Google 账号加入云山礼器，跨设备保存心仪礼器清单并获取地方非遗工坊上新动态。',
+      switchToSigninPrompt: '初次来访？',
+      switchToLoginPrompt: '已有藏家名录账号？',
+      loginStoryTitle: '专属藏家档案 · 跨越设备的雅器典藏同步',
+      loginStoryBody:
+        '每件云山礼器均附地方工坊署名中英双语溯源卡。登录后即可将您的心愿单与近期浏览偏好安全保存至云端藏家档案。',
+      loginBenefitWishlist: '实时同步个人心愿单与珍藏器物列表',
+      loginBenefitOrders: '便捷直达历史购买记录与跨境物流追踪',
+      loginBenefitUpdates: '由 Google 身份验证保护的云端藏家数据',
+      continueWithGoogle: '使用 Google 账号登录',
+      signingIn: '正在登录…',
+      signOutButton: '退出登录',
+      signedInBadge: '已登录',
+      accountProfileHeading: '藏家档案',
+      syncedWishlistLabel: '已同步心愿单藏品',
+      browseProductsCta: '浏览全部藏品',
+      orderHistoryCta: '查看历史订单',
+      authPopupClosedError: '登录弹窗在完成验证前已关闭，请重新点击登录。',
+      authPopupBlockedError: '浏览器拦截了登录弹窗，请允许弹窗后重试。',
+      authGenericError: '暂时无法完成登录，请稍后重试。',
+      unverifiedEmailError: '需要经过验证的 Google 邮箱以同步藏家档案。',
+      syncActiveNote: '您的心愿单与浏览记录已与云端藏家档案实时同步。',
     },
     announcements: {
       regionAria: '商城公告',
@@ -1149,6 +1434,32 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationDictionary> = {
         },
       },
     },
+    homeShowcase: {
+      eyebrow: '四大非遗工艺门类',
+      heading: '按传统造物门类探访地方工坊',
+      subtitle:
+        '云山礼器不作繁杂货架堆砌，首页邀您先品读瓷、茶、漆玉与丝帛四大门类传承；点击任意门类即可进入完整藏品目录检索选购。',
+      browseAllCta: '进入全部藏品目录',
+      exploreDisciplineCta: '探访该门类藏品',
+      disciplines: {
+        Porcelain: {
+          region: '景德镇 · 德化 · 汝州',
+          summary: '手绘青花山水茶叶罐、汝窑天青开片花器与温润如脂德化白瓷杯盏。',
+        },
+        'Tea Ware': {
+          region: '龙泉 · 宜兴',
+          summary: '松木灰梅子青工夫茶器、原矿紫砂壶承及竹刻雅集茶盘。',
+        },
+        'Lacquer & Jade': {
+          region: '北京 · 扬州 · 福州',
+          summary: '数十道天然大漆剔红牡丹盒、脱胎漆艺器皿与水磨和田玉印。',
+        },
+        'Silk & Paper': {
+          region: '苏州 · 湖州 · 宣城',
+          summary: '双面苏绣真丝礼巾、四代世家兼毫毛笔与手工金粉宣纸折扇。',
+        },
+      },
+    },
     newsletter: {
       eyebrow: '窑口与工坊季信',
       heading: '订阅时令上新与匠人故事',
@@ -1175,6 +1486,7 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationDictionary> = {
       navCollection: '精选礼器目录',
       navWorkshops: '地方非遗工坊',
       navCollectors: '藏家实收寄语',
+      navOrderHistory: '历史订单',
       navTrackOrder: '查询订单状态',
       orderLookupHeading: '订单状态查询',
       orderLookupDescription: '输入订单回执编号，实时查看工坊装箱、海关清关与国际派送进度。',
@@ -1207,13 +1519,17 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationDictionary> = {
       reviewsHeading: '藏家评价',
       reviewsSubtitle: '来自全球已购藏家对工艺质感、釉色及跨国防护包装的真实反馈。',
       noReviews: '该器物暂无藏家评价。',
-      relatedHeading: '您可能还喜欢',
-      relatedSubtitleSuffix: '及同源传习工坊搭配佳作。',
+      relatedHeading: '为您推荐',
+      relatedSubtitleSuffix: '同源非遗工艺门类的匠心佳作',
       share: '分享',
       shareAria: '分享此器物',
       sharedFeedback: '已分享',
       linkCopiedFeedback: '链接已复制',
-      hoverToZoom: '悬停放大细节',
+      hoverToZoom: '悬停鉴赏手作细节',
+      zoomInspectingHint: '细节放大中 · 移动光标细览',
+      zoomLevelAria: '切换放大倍率',
+      zoomActivateAria: '放大查看工艺细节',
+      zoomResetAria: '恢复默认尺寸',
       writeReviewTitle: '撰写藏品评价',
       ratingLabel: '评分',
       starAriaSuffix: '星',
@@ -1228,6 +1544,22 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationDictionary> = {
       authorError: '请填写您的姓名（至少 2 个字符）。',
       commentError: '请填写至少 5 个字符的评价内容。',
       verifiedCollector: '认证藏家',
+      writeReviewCta: '撰写评价',
+      allRatings: '全部评分',
+      starFilterSuffix: '星',
+      noReviewsForRating: '该星级暂无藏家评价。',
+      showAllRatings: '查看全部评价',
+      selectProductLabel: '评价器物',
+      reviewingPiecePrefix: '正在评价',
+      ratingDistributionAria: '各星级评分分布',
+      shareSectionLabel: '分享此件器物',
+      shareFacebook: 'Facebook',
+      shareTwitter: 'Twitter',
+      sharePinterest: 'Pinterest',
+      shareNativeButton: '复制链接',
+      sharedToPrefix: '已通过系统分享至',
+      copiedForPrefix: '已复制链接，可分享至',
+      openComposerPrefix: '前往',
     },
     wishlist: {
       dialogAria: '我的心愿单',
@@ -1293,6 +1625,11 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationDictionary> = {
       cashOnDelivery: '货到付款',
       optionalGiftNote: '礼品卡附言（选填）',
       giftNotePlaceholder: '为收礼人手写一段祝福语...',
+      giftMessageTitle: '个性化礼品寄语（选填）',
+      giftMessageSubtitle: '将随您的订单印制于中英双语典藏礼卡之上。',
+      giftMessagePlaceholder: '为收礼人写下专属祝福、纪念日期或赠礼附言...',
+      giftMessageClear: '清空寄语',
+      giftMessageSavedBadge: '已随购物袋保存',
       continueExploring: '继续浏览藏品',
       total: '合计',
       proceedToCheckout: '前往结算',
@@ -1417,6 +1754,31 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationDictionary> = {
     },
     scrollTop: {
       ariaLabel: '回到顶部',
+    },
+    orderHistory: {
+      eyebrow: '藏家账户',
+      heading: '历史订单记录',
+      subtitle: '浏览您的过往礼器购买记录、物流履约进度与随附赠言回执。',
+      totalOrdersSingular: '笔订单',
+      totalOrdersPlural: '笔订单',
+      scrollRegionAria: '可滚动的历史购买订单列表',
+      filterGroupAria: '按履约状态筛选历史订单',
+      filterAll: '全部订单',
+      itemsSingular: '件器物',
+      itemsPlural: '件器物',
+      qtyLabel: '数量',
+      totalLabel: '订单总计',
+      recentOrderBadge: '最新下单',
+      archiveOrderBadge: '历史购藏',
+      giftNoteLabel: '礼卡附言',
+      estimatedDeliveryLabel: '物流动态',
+      placedOnPrefix: '下单日期',
+      recipientPrefix: '收件至',
+      viewDetailsButton: '查看物流详情',
+      reorderButton: '再次购买',
+      emptyTitle: '暂无历史购买记录',
+      emptyFiltered: '当前筛选状态下暂无符合条件的订单。',
+      resetFilter: '查看全部订单',
     },
     breadcrumb: {
       navAria: '面包屑导航',

@@ -8,9 +8,21 @@ interface FooterProps {
   language: LanguageCode;
   onOpenOrderLookup: (orderNumber?: string) => void;
   onOpenOrderTracking: () => void;
+  onNavigateProducts: () => void;
+  onNavigateSignIn: () => void;
+  onNavigateLogin: () => void;
+  onNavigateSection: (sectionId: string) => void;
 }
 
-export function Footer({ language, onOpenOrderLookup, onOpenOrderTracking }: FooterProps) {
+export function Footer({
+  language,
+  onOpenOrderLookup,
+  onOpenOrderTracking,
+  onNavigateProducts,
+  onNavigateSignIn,
+  onNavigateLogin,
+  onNavigateSection,
+}: FooterProps) {
   const [orderInput, setOrderInput] = useState('');
   const [inputError, setInputError] = useState<string | null>(null);
 
@@ -57,18 +69,63 @@ export function Footer({ language, onOpenOrderLookup, onOpenOrderTracking }: Foo
             </h2>
             <ul className="space-y-2 text-sm text-[#5E5A54]">
               <li>
-                <a href="#collection" className="hover:text-[#1A1917] transition-colors">
-                  {t.navCollection}
+                <a
+                  href="/products"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onNavigateProducts();
+                  }}
+                  className="hover:text-[#1A1917] transition-colors"
+                >
+                  {allT.header.productsPage}
                 </a>
               </li>
               <li>
-                <a href="#craftsmanship" className="hover:text-[#1A1917] transition-colors">
+                <a
+                  href="/signin"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onNavigateSignIn();
+                  }}
+                  className="hover:text-[#1A1917] transition-colors"
+                >
+                  {allT.header.signIn}
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/login"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onNavigateLogin();
+                  }}
+                  className="hover:text-[#1A1917] transition-colors"
+                >
+                  {allT.header.logIn}
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/#craftsmanship"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onNavigateSection('craftsmanship');
+                  }}
+                  className="hover:text-[#1A1917] transition-colors"
+                >
                   {t.navWorkshops}
                 </a>
               </li>
               <li>
-                <a href="#collectors" className="hover:text-[#1A1917] transition-colors">
-                  {t.navCollectors}
+                <a
+                  href="/#order-history"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onNavigateSection('order-history');
+                  }}
+                  className="hover:text-[#1A1917] transition-colors"
+                >
+                  {t.navOrderHistory}
                 </a>
               </li>
               <li>

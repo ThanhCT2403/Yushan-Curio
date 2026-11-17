@@ -22,9 +22,25 @@ import type {
 export const FREE_SHIPPING_THRESHOLD = 120;
 export const STANDARD_SHIPPING_FEE = 15;
 export const GIFT_WRAP_FEE = 8;
+export const MAX_GIFT_MESSAGE_LENGTH = 240;
 export const MIN_PRICE_SLIDER = 50;
 export const MAX_PRICE_SLIDER = 220;
 export const MAX_COMPARE_ITEMS = 3;
+
+export function clampGiftMessage(
+  rawMessage: string,
+  maxLength = MAX_GIFT_MESSAGE_LENGTH,
+): string {
+  if (typeof rawMessage !== 'string' || maxLength <= 0) return '';
+  return rawMessage.slice(0, maxLength);
+}
+
+export function formatGiftMessageForOrder(
+  rawMessage: string,
+  maxLength = MAX_GIFT_MESSAGE_LENGTH,
+): string {
+  return clampGiftMessage(rawMessage, maxLength).trim();
+}
 
 export const PRICE_PRESET_OPTIONS: Array<{
   id: Exclude<PriceRangePreset, 'custom'>;
@@ -376,6 +392,21 @@ export function getRelatedProducts(
 
   return ranked.slice(0, Math.max(0, limit));
 }
+
+export function getSameCategoryProducts(
+  currentProduct: SouvenirProduct,
+  allProducts: SouvenirProduct[],
+  limit = 3,
+): SouvenirProduct[] {
+  const safeLimit = Math.max(0, limit);
+  if (safeLimit === 0) return [];
+
+  return allProducts
+    .filter((p) => p.id !== currentProduct.id && p.category === currentProduct.category)
+    .sort((a, b) => a.featuredRank - b.featuredRank)
+    .slice(0, safeLimit);
+}
+
 
 export function toggleCompareItem(
   compareIds: string[],
@@ -758,6 +789,60 @@ export function buildProductSharePayload(
   };
 }
 
+export type SocialSharePlatform = 'facebook' | 'twitter' | 'pinterest' | 'native';
+
+export interface SocialShareUrls {
+  facebook: string;
+  twitter: string;
+  pinterest: string;
+  directUrl: string;
+}
+
+export function buildSocialShareUrls(
+  payload: ProductSharePayload,
+  mediaUrl?: string,
+): SocialShareUrls {
+  const encodedUrl = encodeURIComponent(payload.url);
+  const encodedTitle = encodeURIComponent(payload.title);
+  const encodedMedia = mediaUrl ? encodeURIComponent(mediaUrl) : '';
+
+  return {
+    facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
+    twitter: `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`,
+    pinterest: `https://pinterest.com/pin/create/button/?url=${encodedUrl}&description=${encodedTitle}${
+      encodedMedia ? `&media=${encodedMedia}` : ''
+    }`,
+    directUrl: payload.url,
+  };
+}
+
+export async function executeNativeShare(
+  payload: ProductSharePayload,
+  nativeShareFn?: ((data: ProductSharePayload) => Promise<void>) | null,
+  clipboardCopyFn?: ((text: string) => Promise<void>) | null,
+): Promise<'shared' | 'copied' | 'aborted'> {
+  if (typeof nativeShareFn === 'function') {
+    try {
+      await nativeShareFn(payload);
+      return 'shared';
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        return 'aborted';
+      }
+    }
+  }
+
+  if (typeof clipboardCopyFn === 'function') {
+    try {
+      await clipboardCopyFn(payload.url);
+    } catch {
+      // Ignore clipboard permission errors in restricted contexts
+    }
+  }
+
+  return 'copied';
+}
+
 export function resolveProductFromUrl(
   products: SouvenirProduct[],
   search: string,
@@ -771,6 +856,9 @@ export function resolveProductFromUrl(
     return null;
   }
 }
+
+export const PDP_ZOOM_SCALES = [2.25, 3] as const;
+export type PdpZoomScale = (typeof PDP_ZOOM_SCALES)[number];
 
 export function computeZoomOriginPercent(
   clientX: number,
@@ -1005,6 +1093,55 @@ export function mergeProductReviews(
   return [...userReviews, ...seededReviews];
 }
 
+export function getReviewsForProduct(
+  product: Pick<SouvenirProduct, 'id' | 'reviews'> | null | undefined,
+  reviewsByProduct: Record<string, ProductReview[]> = {},
+  extraUserReviews: ProductReview[] = [],
+): ProductReview[] {
+  if (!product) return [];
+  const mappedReviews = reviewsByProduct[product.id] ?? [];
+  const combined = [...mappedReviews, ...extraUserReviews, ...(product.reviews ?? [])];
+  const seenIds = new Set<string>();
+  const unique: ProductReview[] = [];
+  for (const review of combined) {
+    if (!seenIds.has(review.id)) {
+      seenIds.add(review.id);
+      unique.push(review);
+    }
+  }
+  return unique;
+}
+
+export interface StarBreakdownRow {
+  stars: 1 | 2 | 3 | 4 | 5;
+  count: number;
+  percentage: number;
+}
+
+export function getStarRatingBreakdown(reviews: ProductReview[]): StarBreakdownRow[] {
+  const total = reviews.length;
+  const counts: Record<1 | 2 | 3 | 4 | 5, number> = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+
+  for (const review of reviews) {
+    const rounded = Math.min(5, Math.max(1, Math.round(review.rating))) as 1 | 2 | 3 | 4 | 5;
+    counts[rounded] += 1;
+  }
+
+  return ([5, 4, 3, 2, 1] as const).map((stars) => ({
+    stars,
+    count: counts[stars],
+    percentage: total > 0 ? Math.round((counts[stars] / total) * 100) : 0,
+  }));
+}
+
+export function filterReviewsByRating(
+  reviews: ProductReview[],
+  ratingFilter: number | 'all',
+): ProductReview[] {
+  if (ratingFilter === 'all') return reviews;
+  return reviews.filter((review) => Math.round(review.rating) === ratingFilter);
+}
+
 export const MAX_RECENTLY_VIEWED = 6;
 export const DEFAULT_RECOMMENDATIONS_LIMIT = 3;
 
@@ -1128,3 +1265,208 @@ export function getRecommendedProducts(
     seedProducts,
   };
 }
+
+export type OrderHistoryFilter = 'all' | OrderFulfillmentStatus;
+
+export interface OrderHistoryEntry {
+  order: ConfirmedOrder;
+  status: OrderFulfillmentStatus;
+  source: 'user' | 'sample';
+  carrierNote: string;
+  estimatedDelivery: string;
+  estimatedDeliveryDate: string;
+}
+
+export function buildOrderHistoryEntries(
+  placedOrders: ConfirmedOrder[],
+  sampleOrders: SeededOrderRecord[],
+  filter: OrderHistoryFilter = 'all',
+): OrderHistoryEntry[] {
+  const seenOrderNumbers = new Set<string>();
+  const combined: OrderHistoryEntry[] = [];
+
+  for (const order of placedOrders) {
+    const normalized = normalizeOrderNumber(order.orderNumber);
+    if (!normalized || seenOrderNumbers.has(normalized)) continue;
+    seenOrderNumbers.add(normalized);
+    const status: OrderFulfillmentStatus = 'Processing';
+    combined.push({
+      order,
+      status,
+      source: 'user',
+      carrierNote: 'Order received — artisan workshop is preparing protective export crating.',
+      estimatedDelivery: 'Estimated dispatch within 48 hours',
+      estimatedDeliveryDate: computeEstimatedDeliveryDate(order.createdAtIso, status),
+    });
+  }
+
+  for (const seeded of sampleOrders) {
+    const normalized = normalizeOrderNumber(seeded.order.orderNumber);
+    if (!normalized || seenOrderNumbers.has(normalized)) continue;
+    seenOrderNumbers.add(normalized);
+    combined.push({
+      order: seeded.order,
+      status: seeded.status,
+      source: 'sample',
+      carrierNote: seeded.carrierNote,
+      estimatedDelivery: seeded.estimatedDelivery,
+      estimatedDeliveryDate: computeEstimatedDeliveryDate(
+        seeded.order.createdAtIso,
+        seeded.status,
+      ),
+    });
+  }
+
+  combined.sort((a, b) => {
+    const timeA = Date.parse(a.order.createdAtIso);
+    const timeB = Date.parse(b.order.createdAtIso);
+    const safeA = Number.isFinite(timeA) ? timeA : 0;
+    const safeB = Number.isFinite(timeB) ? timeB : 0;
+    return safeB - safeA;
+  });
+
+  if (filter === 'all') {
+    return combined;
+  }
+
+  return combined.filter((entry) => entry.status === filter);
+}
+
+export function getOrderStatusCounts(
+  entries: OrderHistoryEntry[],
+): Record<OrderHistoryFilter, number> {
+  const counts: Record<OrderHistoryFilter, number> = {
+    all: entries.length,
+    Processing: 0,
+    Shipped: 0,
+    Delivered: 0,
+  };
+
+  for (const entry of entries) {
+    counts[entry.status] += 1;
+  }
+
+  return counts;
+}
+
+export type AppRoute =
+  | { page: 'home' }
+  | { page: 'products' }
+  | { page: 'product-detail'; slug: string }
+  | { page: 'signin' }
+  | { page: 'login' };
+
+export function parseAppRoute(pathname: string, search = ''): AppRoute {
+  const cleanPath = (pathname || '/').replace(/\/+$/, '') || '/';
+
+  if (cleanPath === '/signin') {
+    return { page: 'signin' };
+  }
+
+  if (cleanPath === '/login') {
+    return { page: 'login' };
+  }
+
+  if (cleanPath === '/products') {
+    return { page: 'products' };
+  }
+
+  if (cleanPath.startsWith('/products/')) {
+    const rawSlug = cleanPath.slice('/products/'.length).trim();
+    if (rawSlug) {
+      try {
+        return { page: 'product-detail', slug: decodeURIComponent(rawSlug) };
+      } catch {
+        return { page: 'product-detail', slug: rawSlug };
+      }
+    }
+    return { page: 'products' };
+  }
+
+  // Preserve compatibility with deep links like /?product=jingdezhen-mountain-caddy
+  if (search) {
+    try {
+      const params = new URLSearchParams(search);
+      const productSlug = params.get('product')?.trim();
+      if (productSlug) {
+        return { page: 'product-detail', slug: productSlug };
+      }
+    } catch {
+      // Ignore malformed search query
+    }
+  }
+
+  return { page: 'home' };
+}
+
+export function buildRoutePath(route: AppRoute): string {
+  switch (route.page) {
+    case 'products':
+      return '/products';
+    case 'product-detail':
+      return `/products/${encodeURIComponent(route.slug)}`;
+    case 'signin':
+      return '/signin';
+    case 'login':
+      return '/login';
+    case 'home':
+    default:
+      return '/';
+  }
+}
+
+export function findProductBySlug(
+  products: SouvenirProduct[],
+  slug: string,
+): SouvenirProduct | null {
+  const normalized = slug.trim().toLowerCase();
+  if (!normalized) return null;
+  return (
+    products.find(
+      (product) =>
+        product.slug.toLowerCase() === normalized ||
+        product.id.toLowerCase() === normalized,
+    ) ?? null
+  );
+}
+
+export interface CollectorProfileInput {
+  uid: string;
+  email: string;
+  displayName: string;
+  wishlistIds: string[];
+  recentProductIds: string[];
+}
+
+const VALID_ID_REGEX = /^[a-zA-Z0-9_-]{1,128}$/;
+
+export function sanitizeCollectorProfilePayload(
+  input: CollectorProfileInput,
+  validProductIds?: Set<string>,
+): CollectorProfileInput {
+  const uid = VALID_ID_REGEX.test(input.uid.trim()) ? input.uid.trim() : '';
+  const email = input.email.trim().slice(0, 254);
+  const displayName = (input.displayName.trim() || email.split('@')[0] || 'Collector').slice(0, 120);
+
+  const normalizeIds = (ids: string[], limit: number): string[] => {
+    const deduped: string[] = [];
+    for (const raw of ids) {
+      const cleaned = typeof raw === 'string' ? raw.trim() : '';
+      if (!cleaned || !VALID_ID_REGEX.test(cleaned)) continue;
+      if (validProductIds && !validProductIds.has(cleaned)) continue;
+      if (deduped.includes(cleaned)) continue;
+      deduped.push(cleaned);
+      if (deduped.length >= limit) break;
+    }
+    return deduped;
+  };
+
+  return {
+    uid,
+    email,
+    displayName,
+    wishlistIds: normalizeIds(input.wishlistIds, 30),
+    recentProductIds: normalizeIds(input.recentProductIds, 12),
+  };
+}
+

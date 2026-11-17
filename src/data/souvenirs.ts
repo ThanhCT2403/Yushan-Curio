@@ -11,6 +11,16 @@ import cinnabarLacquerBoxImg from '../assets/images/product_cinnabar_lacquer_box
 import suzhouSilkScarfImg from '../assets/images/product_suzhou_silk_scarf_1794753163018.jpg';
 import hetianJadePendantImg from '../assets/images/product_hetian_jade_pendant_1794753163257.jpg';
 import calligraphySealSetImg from '../assets/images/product_calligraphy_seal_set_1794753164214.jpg';
+import ruKilnVaseImg from '../assets/images/product_ru_kiln_vase_1794927430390.jpg';
+import fencaiGingerJarImg from '../assets/images/product_fencai_ginger_jar_1794927431791.jpg';
+import dehuaCupsImg from '../assets/images/product_dehua_cups_1794927430821.jpg';
+import yixingZishaTeapotImg from '../assets/images/product_yixing_zisha_teapot_1794927431610.jpg';
+import jianzhanTeabowlImg from '../assets/images/product_jianzhan_teabowl_1794927431916.jpg';
+import cobaltGaiwanImg from '../assets/images/product_cobalt_gaiwan_1794927432828.jpg';
+import fuzhouLacquerTrayImg from '../assets/images/product_fuzhou_lacquer_tray_1794927435660.jpg';
+import jadeCenserImg from '../assets/images/product_jade_censer_1794927433912.jpg';
+import suzhouFoldingFanImg from '../assets/images/product_suzhou_folding_fan_1794927434312.jpg';
+import xuanScrollKitImg from '../assets/images/product_xuan_scroll_kit_1794927434988.jpg';
 
 export const HERO_SLIDES: HeroSlide[] = [
   {
@@ -492,6 +502,469 @@ export const SOUVENIR_PRODUCTS: SouvenirProduct[] = [
         variantLabel: 'Pre-Carved "Peace & Harmony" Seal',
         comment:
           'Lovely desktop presentation with balanced weight on the seal. Took a little practice to press evenly on textured cotton paper, then stamped cleanly.',
+      },
+    ],
+  },
+  {
+    id: 'ru-kiln-celadon-vase',
+    slug: 'ru-kiln-celadon-vase',
+    name: 'Ru Kiln Lotus Incense Vase',
+    chineseTitle: '汝窑天青莲瓣花插',
+    category: 'Porcelain',
+    origin: 'Ruzhou, Henan',
+    workshop: 'Songcheng Ru Glaze Kiln',
+    price: 148,
+    image: ruKilnVaseImg,
+    imageAlt: 'Pale sky-blue Ru kiln porcelain lotus-petal bud vase with crackle glaze on travertine stone.',
+    editionNote: 'Agate Glaze Batch',
+    badge: 'new-arrival',
+    shortDescription: 'Sky-blue agate-glazed porcelain vase sculpted with overlapping lotus petals and fine ice-crackle.',
+    story:
+      'Formulated with crushed natural agate stone in the glaze slip, this Ruzhou porcelain vase catches soft window light in serene sky-blue hues prized since the Northern Song court.',
+    materials: 'Ruzhou stoneware-porcelain body, natural agate-mineral sky-blue glaze',
+    dimensions: '15.5 cm height · 8 cm diameter',
+    inStock: true,
+    featuredRank: 7,
+    variants: [
+      {
+        id: 'sky-blue-single',
+        label: 'Single Flower Vase (15.5 cm)',
+        note: 'Includes lined brocade presentation box',
+        priceDelta: 0,
+      },
+      {
+        id: 'sky-blue-stand',
+        label: 'With Rosewood Base Stand',
+        note: 'Fitted dark wood display plinth included',
+        priceDelta: 22,
+      },
+    ],
+    reviews: [
+      {
+        id: 'rev-ru-1',
+        author: 'Evelyn Cho',
+        location: 'Taipei',
+        rating: 5,
+        date: 'October 20, 2026',
+        variantLabel: 'With Rosewood Base Stand',
+        comment:
+          'Quiet sky-blue tone and delicate lotus relief. Already holds dried tea blossoms beside my gaiwan set.',
+      },
+    ],
+  },
+  {
+    id: 'fencai-peony-ginger-jar',
+    slug: 'fencai-peony-ginger-jar',
+    name: 'Famille Rose Peony Ginger Jar',
+    chineseTitle: '景德镇粉彩牡丹将军罐',
+    category: 'Porcelain',
+    origin: 'Jingdezhen, Jiangxi',
+    workshop: 'Changnan Overglaze Atelier',
+    price: 164,
+    image: fencaiGingerJarImg,
+    imageAlt: 'Jingdezhen famille rose painted porcelain lidded ginger jar featuring blush-pink peonies on travertine.',
+    editionNote: 'Overglaze Enamel',
+    shortDescription: 'Hand-enameled famille rose porcelain jar depicting layered blush peonies and gilded rim bands.',
+    story:
+      'Double-fired in Jingdezhen using traditional fencai glass-white powder enamels so each petal grades smoothly from pale rose to soft cream.',
+    materials: 'Fine Jingdezhen porcelain, mineral fencai overglaze enamel, subtle gold trim',
+    dimensions: '18 cm height · 13 cm diameter · 900 ml capacity',
+    inStock: true,
+    featuredRank: 8,
+    variants: [
+      {
+        id: 'peony-classic',
+        label: 'Classic Enamel Jar (18 cm)',
+        note: 'Fitted porcelain cap with silk storage bag',
+        priceDelta: 0,
+      },
+      {
+        id: 'peony-collector-box',
+        label: 'Paulownia Display Crate Edition',
+        note: 'Custom export wood box & provenance scroll',
+        priceDelta: 28,
+      },
+    ],
+    reviews: [
+      {
+        id: 'rev-fencai-1',
+        author: 'Margaret Reid',
+        location: 'Toronto, Canada',
+        rating: 5,
+        date: 'October 9, 2026',
+        variantLabel: 'Paulownia Display Crate Edition',
+        comment:
+          'You can feel the slight raised enamel texture across the peony petals—true painterly brushwork.',
+      },
+    ],
+  },
+  {
+    id: 'dehua-blanc-guanyin-cup',
+    slug: 'dehua-blanc-guanyin-cup',
+    name: 'Dehua Blanc de Chine Tasting Pair',
+    chineseTitle: '德化白瓷映月对杯',
+    category: 'Porcelain',
+    origin: 'Dehua, Fujian',
+    workshop: 'Daiyun Ivory Kiln',
+    price: 88,
+    image: dehuaCupsImg,
+    imageAlt: 'Pair of translucent warm ivory Dehua Blanc de Chine white porcelain tea cups on limestone.',
+    badge: 'best-seller',
+    shortDescription: 'Paper-thin warm ivory porcelain tasting cups prized for illuminating golden oolong infusions.',
+    story:
+      'Dehua "sheep-fat jade" white clay vitrifies to a velvety ivory translucency without brightener tints, softening tea astringency while displaying clear liquor color.',
+    materials: 'Low-iron Dehua kaolin clay, high-fired pure clear glaze',
+    dimensions: 'Pair of 90 ml cups · 6.8 cm rim diameter',
+    inStock: true,
+    featuredRank: 9,
+    variants: [
+      {
+        id: 'ivory-pair',
+        label: 'Tasting Pair (2 Cups)',
+        note: 'Packed in cushioned linen box',
+        priceDelta: 0,
+      },
+      {
+        id: 'ivory-quartet',
+        label: 'Host Quartet (4 Cups)',
+        note: 'Complete 4-cup tasting presentation',
+        priceDelta: 46,
+      },
+    ],
+    reviews: [
+      {
+        id: 'rev-dehua-1',
+        author: 'Oliver Grant',
+        location: 'Bristol, UK',
+        rating: 5,
+        date: 'October 2, 2026',
+        variantLabel: 'Tasting Pair (2 Cups)',
+        comment:
+          'Warm ivory glow when filled with high-mountain oolong. Lip thickness is remarkably fine.',
+      },
+    ],
+  },
+  {
+    id: 'yixing-zisha-shuiping-pot',
+    slug: 'yixing-zisha-shuiping-pot',
+    name: 'Yixing Zisha Clay Shuiping Teapot',
+    chineseTitle: '宜兴紫砂水平手拉壶',
+    category: 'Tea Ware',
+    origin: 'Yixing, Jiangsu',
+    workshop: 'Dingshu Zisha Studio',
+    price: 172,
+    image: yixingZishaTeapotImg,
+    imageAlt: 'Handcrafted reddish-brown Yixing Zisha unglazed clay teapot on a bamboo tea tray.',
+    editionNote: 'Huanglongshan Ore',
+    badge: 'best-seller',
+    shortDescription: 'Breathable unglazed zhuni mineral clay gongfu teapot with balanced three-point spout geometry.',
+    story:
+      'Constructed from weathered Huanglongshan clay without interior glaze, this classic Shuiping pot seasons gracefully with aged pu-erh or roasted Wuyi rock teas.',
+    materials: 'Aged Yixing zhuni zisha clay, built-in 9-hole clay ball filter',
+    dimensions: '160 ml capacity · 11.5 cm spout-to-handle',
+    inStock: true,
+    featuredRank: 10,
+    variants: [
+      {
+        id: 'shuiping-160ml',
+        label: '160 ml Solo / Duo Pot',
+        note: 'Includes artist seal certificate & cord',
+        priceDelta: 0,
+      },
+      {
+        id: 'shuiping-tray-set',
+        label: 'Pot + Bamboo Serving Tray',
+        note: 'Includes compact slatted bamboo tea boat',
+        priceDelta: 34,
+      },
+    ],
+    reviews: [
+      {
+        id: 'rev-yixing-1',
+        author: 'Raymond Ng',
+        location: 'Hong Kong',
+        rating: 5,
+        date: 'October 24, 2026',
+        variantLabel: '160 ml Solo / Duo Pot',
+        comment:
+          'Lid suction stops water cleanly when covering the air hole, and the clay already shows a warm patina.',
+      },
+    ],
+  },
+  {
+    id: 'jianzhan-hare-fur-chawan',
+    slug: 'jianzhan-hare-fur-chawan',
+    name: 'Jianzhan Tenmoku Tea Bowl',
+    chineseTitle: '建盏兔毫油滴茶盏',
+    category: 'Tea Ware',
+    origin: 'Jianyang, Fujian',
+    workshop: 'Shuiji Iron Glaze Kiln',
+    price: 96,
+    image: jianzhanTeabowlImg,
+    imageAlt: 'Dark iron-glazed Chinese Jianzhan tenmoku tea bowl with silvery hare-fur glaze streaks on travertine.',
+    editionNote: '1,310°C Reduction Fire',
+    shortDescription: 'Heavy-walled iron stoneware chawan crystallized with shimmering silver hare-fur mineral streaks.',
+    story:
+      'Fired in reducing atmosphere above 1,300°C, high-iron local clay naturally separates into delicate crystalline hare-fur striations—no two bowls emerge alike.',
+    materials: 'Jianyang iron-rich stoneware clay, wood-ash & red-clay mineral glaze',
+    dimensions: '11.5 cm diameter · 6.2 cm height · 150 ml',
+    inStock: true,
+    featuredRank: 11,
+    variants: [
+      {
+        id: 'hare-fur-standard',
+        label: 'Classic Chawan (150 ml)',
+        note: 'Includes brocade pouch & firing record',
+        priceDelta: 0,
+      },
+      {
+        id: 'hare-fur-box',
+        label: 'Collector Wood Box Edition',
+        note: 'Fitted paulownia box with silk lining',
+        priceDelta: 20,
+      },
+    ],
+    reviews: [
+      {
+        id: 'rev-jianzhan-1',
+        author: 'Haruto Watanabe',
+        location: 'Osaka, Japan',
+        rating: 5,
+        date: 'October 15, 2026',
+        variantLabel: 'Collector Wood Box Edition',
+        comment:
+          'Deep metallic luster under warm evening lighting. Noticeably softens mineral mouthfeel in dark teas.',
+      },
+    ],
+  },
+  {
+    id: 'jingdezhen-blue-gaiwan',
+    slug: 'jingdezhen-blue-gaiwan',
+    name: 'Cobalt Willow Porcelain Gaiwan',
+    chineseTitle: '青花垂柳三才盖碗',
+    category: 'Tea Ware',
+    origin: 'Jingdezhen, Jiangxi',
+    workshop: 'Yaoli Old Kiln Studio',
+    price: 108,
+    image: cobaltGaiwanImg,
+    imageAlt: 'Three-piece Jingdezhen blue-and-white cobalt painted porcelain gaiwan lidded tea bowl on limestone.',
+    badge: 'new-arrival',
+    shortDescription: 'Traditional three-piece flared-rim gaiwan painted with weeping willow branches for gongfu steeping.',
+    story:
+      'Balanced with a wide anti-scald flared lip so fingers stay cool while pouring green, white, and fragrant floral oolong infusions.',
+    materials: 'High-fired Jingdezhen kaolin porcelain, natural cobalt brushwork',
+    dimensions: '135 ml vessel · 10 cm saucer diameter',
+    inStock: true,
+    featuredRank: 12,
+    variants: [
+      {
+        id: 'gaiwan-3pc',
+        label: 'Complete 3-Piece Gaiwan',
+        note: 'Bowl, lid, and matching saucer',
+        priceDelta: 0,
+      },
+      {
+        id: 'gaiwan-pouch',
+        label: 'Travel Felt Case Edition',
+        note: 'Includes structured linen-felt travel case',
+        priceDelta: 18,
+      },
+    ],
+    reviews: [
+      {
+        id: 'rev-gaiwan-1',
+        author: 'Sora Takahashi',
+        location: 'Yokohama, Japan',
+        rating: 5,
+        date: 'October 5, 2026',
+        variantLabel: 'Complete 3-Piece Gaiwan',
+        comment:
+          'Generous flared rim makes one-handed gongfu pours effortless even with boiling-hot water.',
+      },
+    ],
+  },
+  {
+    id: 'fuzhou-bodiless-lacquer-tray',
+    slug: 'fuzhou-bodiless-lacquer-tray',
+    name: 'Fuzhou Bodiless Lacquer Tea Tray',
+    chineseTitle: '福州脱胎漆器云纹茶盘',
+    category: 'Lacquer & Jade',
+    origin: 'Fuzhou, Fujian',
+    workshop: 'Sanshan Heritage Lacquer',
+    price: 158,
+    image: fuzhouLacquerTrayImg,
+    imageAlt: 'Oblong dark oxblood-and-black Fuzhou bodiless Chinese lacquerware serving tray with gold cloud inlay.',
+    editionNote: 'Tuotai Craft',
+    shortDescription: 'Featherlight silk-core bodiless lacquer serving tray inlaid with fine gold auspicious clouds.',
+    story:
+      'Shaped over ramie cloth and dozens of cured tree-lacquer coats before removing the inner mold, Fuzhou bodiless lacquer feels remarkably light yet impervious to warm tea.',
+    materials: 'Ramie linen core, natural urushi lacquer, gold-leaf cloud linework',
+    dimensions: '32 cm length · 20 cm width · 2.5 cm depth',
+    inStock: true,
+    featuredRank: 13,
+    variants: [
+      {
+        id: 'oxblood-32cm',
+        label: 'Gongfu Serving Tray (32 cm)',
+        note: 'Holds teapot plus 3–4 tasting cups',
+        priceDelta: 0,
+      },
+      {
+        id: 'oxblood-padded',
+        label: 'Collector Velvet Sleeve Edition',
+        note: 'Includes protective flannel dust bag',
+        priceDelta: 16,
+      },
+    ],
+    reviews: [
+      {
+        id: 'rev-fuzhou-1',
+        author: 'Catherine Brooks',
+        location: 'Boston, USA',
+        rating: 5,
+        date: 'October 12, 2026',
+        variantLabel: 'Gongfu Serving Tray (32 cm)',
+        comment:
+          'Shockingly light in the hand with a mirror-smooth oxblood undertone under daylight.',
+      },
+    ],
+  },
+  {
+    id: 'xiuyan-jade-incense-burner',
+    slug: 'xiuyan-jade-incense-burner',
+    name: 'Yangzhou Carved Jade Censer',
+    chineseTitle: '扬州玉雕双耳三足熏炉',
+    category: 'Lacquer & Jade',
+    origin: 'Yangzhou, Jiangsu',
+    workshop: 'Guangling Jade Carving Studio',
+    price: 195,
+    image: jadeCenserImg,
+    imageAlt: 'Carved pale celadon-green nephrite jade tripod incense censer with sculpted ring handles on travertine.',
+    editionNote: 'Heirloom Carving',
+    badge: 'low-stock',
+    shortDescription: 'Sculpted pale-green nephrite tripod censer featuring loose ring-ears carved from a single stone.',
+    story:
+      'Hollowed and detailed with traditional water-lathe abrasive wheels in Yangzhou so both hanging rings move freely while remaining unbroken from the vessel body.',
+    materials: 'Natural green nephrite jade, carved rosewood stand & brass ash dish',
+    dimensions: '11 cm height · 9.5 cm handle-to-handle',
+    inStock: true,
+    featuredRank: 14,
+    variants: [
+      {
+        id: 'censer-classic',
+        label: 'Jade Censer + Brass Insert',
+        note: 'Suitable for cone or coil incense',
+        priceDelta: 0,
+      },
+      {
+        id: 'censer-agarwood',
+        label: 'With Sample Agarwood Coils',
+        note: 'Includes tin of 12 natural incense coils',
+        priceDelta: 24,
+      },
+    ],
+    reviews: [
+      {
+        id: 'rev-censer-1',
+        author: 'Julian Vance',
+        location: 'London, UK',
+        rating: 5,
+        date: 'October 8, 2026',
+        variantLabel: 'Jade Censer + Brass Insert',
+        comment:
+          'Remarkable that the movable rings are carved out of the same jade block—a quiet centerpiece on my study shelf.',
+      },
+    ],
+  },
+  {
+    id: 'suzhou-sandalwood-folding-fan',
+    slug: 'suzhou-sandalwood-folding-fan',
+    name: 'Suzhou Sandalwood & Silk Folding Fan',
+    chineseTitle: '苏州檀香绢面折扇',
+    category: 'Silk & Paper',
+    origin: 'Suzhou, Jiangsu',
+    workshop: 'Lingfeng Fan Guild',
+    price: 112,
+    image: suzhouFoldingFanImg,
+    imageAlt: 'Opened Suzhou carved sandalwood folding fan with cream painted ink mountain silk leaf beside linen pouch.',
+    badge: 'best-seller',
+    shortDescription: 'Pierced fragrant sandalwood ribs paired with hand-painted silk leaf depicting misty peaks.',
+    story:
+      'Each wooden guard stick is fret-carved by hand in Suzhou so a faint warm sandalwood aroma releases softly whenever the silk fan is opened.',
+    materials: 'Aged Indian sandalwood ribs, mulberry silk leaf, woven linen sleeve',
+    dimensions: '22 cm closed · 38 cm open span',
+    inStock: true,
+    featuredRank: 15,
+    variants: [
+      {
+        id: 'fan-mountain',
+        label: 'Misty Mountain Ink Leaf',
+        note: 'Includes tailored linen travel sleeve',
+        priceDelta: 0,
+      },
+      {
+        id: 'fan-stand',
+        label: 'With Rosewood Display Easel',
+        note: 'Includes sleeve & folding display stand',
+        priceDelta: 16,
+      },
+    ],
+    reviews: [
+      {
+        id: 'rev-fan-1',
+        author: 'Isabelle Moreau',
+        location: 'Paris, France',
+        rating: 5,
+        date: 'October 17, 2026',
+        variantLabel: 'Misty Mountain Ink Leaf',
+        comment:
+          'Delicate fretwork on the sandalwood ribs and a genuine woody scent that greets you as soon as you open the box.',
+      },
+    ],
+  },
+  {
+    id: 'xuan-rice-paper-scroll-kit',
+    slug: 'xuan-rice-paper-scroll-kit',
+    name: 'Jingxian Xuan Paper Scroll Folio',
+    chineseTitle: '泾县手工宣纸手卷礼盒',
+    category: 'Silk & Paper',
+    origin: 'Xuancheng, Anhui',
+    workshop: 'Qingtan Paper Mill',
+    price: 84,
+    image: xuanScrollKitImg,
+    imageAlt: 'Rolled ivory handmade Anhui Xuan rice paper calligraphy handscroll tied with silk ribbon beside paulownia box.',
+    editionNote: '100% Bark & Straw',
+    shortDescription: 'Archival mulberry-bark and aged-straw Xuan handscroll mounted on silk brocade inside cedar box.',
+    story:
+      'Formed sheet by sheet on bamboo screens in Jingxian using lime-retted sandalwood bark and mountain spring water, offering crisp ink absorption that lasts centuries.',
+    materials: 'Hand-scooped raw-edge Xuan paper, silk brocade backing, paulownia case',
+    dimensions: '34 cm height × 180 cm scroll length',
+    inStock: true,
+    featuredRank: 16,
+    variants: [
+      {
+        id: 'scroll-raw',
+        label: 'Half-Sized Shuxuan (Brush & Ink)',
+        note: 'Balanced ink feathering for calligraphy',
+        priceDelta: 0,
+      },
+      {
+        id: 'scroll-twin',
+        label: 'Collector Twin Scroll Set',
+        note: 'Two mounted scrolls inside gift box',
+        priceDelta: 36,
+      },
+    ],
+    reviews: [
+      {
+        id: 'rev-xuan-1',
+        author: 'Daniel Park',
+        location: 'Seoul, South Korea',
+        rating: 5,
+        date: 'October 1, 2026',
+        variantLabel: 'Half-Sized Shuxuan (Brush & Ink)',
+        comment:
+          'Takes sumi ink cleanly without bleeding out of control, and the paulownia chest protects it from humidity.',
       },
     ],
   },

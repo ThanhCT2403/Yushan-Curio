@@ -1,23 +1,32 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { onAuthStateChanged, type User } from 'firebase/auth';
 import { ArrowLeftRight, Check, X } from 'lucide-react';
 import { AnnouncementBar } from './components/AnnouncementBar';
 import { BreadcrumbBar } from './components/BreadcrumbBar';
-import { CatalogSection } from './components/CatalogSection';
 import { CartDrawer } from './components/CartDrawer';
 import { CompareModal } from './components/CompareModal';
 import { CraftsmanshipSection } from './components/CraftsmanshipSection';
 import { Footer } from './components/Footer';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
+import { HomeAtelierShowcase } from './components/HomeAtelierShowcase';
+import { ListProductPage } from './components/ListProductPage';
+import { LoginPage } from './components/LoginPage';
 import { NewsletterSignup } from './components/NewsletterSignup';
 import { NotifyMeModal } from './components/NotifyMeModal';
+import { OrderHistorySection } from './components/OrderHistorySection';
 import { OrderLookupModal } from './components/OrderLookupModal';
 import { OrderTrackingModal } from './components/OrderTrackingModal';
-import { ProductDetailModal } from './components/ProductDetailModal';
+import { ProductDetailPage } from './components/ProductDetailPage';
 import { QuickLookModal } from './components/QuickLookModal';
 import { ScrollToTopButton } from './components/ScrollToTopButton';
 import { WishlistDrawer } from './components/WishlistDrawer';
 import { CATEGORIES, HERO_SLIDES, SOUVENIR_PRODUCTS } from './data/souvenirs';
+import {
+  auth,
+  subscribeCollectorProfile,
+  syncCollectorProfile,
+} from './lib/firebase';
 import type {
   CartItem,
   CheckoutFormValues,
@@ -33,20 +42,25 @@ import type {
 } from './types/store';
 import { LANGUAGE_CODES, getProductTitle, getTranslations } from './utils/i18n';
 import {
+  type AppRoute,
   CURRENCY_CODES,
   MAX_COMPARE_ITEMS,
   MAX_PRICE_SLIDER,
   PRICE_PRESET_OPTIONS,
   buildConfirmedOrderItems,
+  buildRoutePath,
   calculateCartTotals,
+  clampGiftMessage,
   filterAndSortProducts,
+  findProductBySlug,
+  formatGiftMessageForOrder,
   generateOrderNumber,
   getCompareProducts,
   getRestockAlert,
   getWishlistProducts,
+  parseAppRoute,
   recordRecentlyViewed,
   removeCartItem,
-  resolveProductFromUrl,
   toggleCompareItem,
   toggleWishlistItem,
   updateCartItemQuantity,
@@ -56,6 +70,7 @@ import {
 
 const CART_STORAGE_KEY = 'yunshan_curio_cart_v1';
 const GIFT_WRAP_STORAGE_KEY = 'yunshan_curio_giftwrap_v1';
+const GIFT_MESSAGE_STORAGE_KEY = 'yunshan_curio_giftmessage_v1';
 const WISHLIST_STORAGE_KEY = 'yunshan_curio_wishlist_v1';
 const PLACED_ORDERS_STORAGE_KEY = 'yunshan_curio_orders_v1';
 const RESTOCK_ALERTS_STORAGE_KEY = 'yunshan_curio_restock_alerts_v1';
@@ -139,6 +154,15 @@ function loadInitialGiftWrap(): boolean {
   }
 }
 
+function loadInitialGiftMessage(): string {
+  try {
+    const raw = window.localStorage.getItem(GIFT_MESSAGE_STORAGE_KEY);
+    return raw ? clampGiftMessage(raw) : '';
+  } catch {
+    return '';
+  }
+}
+
 function loadInitialWishlist(): string[] {
   try {
     const raw = window.localStorage.getItem(WISHLIST_STORAGE_KEY);
@@ -188,7 +212,17 @@ function loadInitialRestockAlerts(): RestockAlertSubscription[] {
   }
 }
 
+const VALID_PRODUCT_IDS = new Set(SOUVENIR_PRODUCTS.map((p) => p.id));
+
 export default function App() {
+  const [route, setRoute] = useState<AppRoute>(() =>
+    typeof window !== 'undefined'
+      ? parseAppRoute(window.location.pathname, window.location.search)
+      : { page: 'home' },
+  );
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+
   const [selectedCategory, setSelectedCategory] = useState<SouvenirCategory>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('featured');
@@ -199,15 +233,10 @@ export default function App() {
 
   const [cartItems, setCartItems] = useState<CartItem[]>(loadInitialCart);
   const [giftWrap, setGiftWrap] = useState<boolean>(loadInitialGiftWrap);
+  const [giftMessage, setGiftMessage] = useState<string>(loadInitialGiftMessage);
   const [wishlistIds, setWishlistIds] = useState<string[]>(loadInitialWishlist);
   const [compareIds, setCompareIds] = useState<string[]>([]);
 
-  const [selectedProduct, setSelectedProduct] = useState<SouvenirProduct | null>(() =>
-    resolveProductFromUrl(
-      SOUVENIR_PRODUCTS,
-      typeof window !== 'undefined' ? window.location.search : '',
-    ),
-  );
   const [quickLookProduct, setQuickLookProduct] = useState<SouvenirProduct | null>(null);
   const [isBagOpen, setIsBagOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
@@ -231,7 +260,93 @@ export default function App() {
   >(loadInitialUserReviews);
   const [recentProductIds, setRecentProductIds] = useState<string[]>(loadInitialRecentlyViewed);
 
+  const skippingRemoteSyncRef = useRef(false);
+  const initialRemoteLoadedRef = useRef(false);
+
   const t = getTranslations(language);
+
+  const activeDetailProduct = useMemo(() => {
+    if (route.page !== 'product-detail') return null;
+    return findProductBySlug(SOUVENIR_PRODUCTS, route.slug);
+  }, [route]);
+
+  const navigateRoute = (nextRoute: AppRoute, options?: { replace?: boolean }) => {
+    setRoute(nextRoute);
+    if (typeof window !== 'undefined') {
+      const nextPath = buildRoutePath(nextRoute);
+      if (options?.replace) {
+        window.history.replaceState(null, '', nextPath);
+      } else if (window.location.pathname !== nextPath || window.location.search) {
+        window.history.pushState(null, '', nextPath);
+      }
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    }
+  };
+
+  const navigateHomeSection = (sectionId: string) => {
+    if (route.page !== 'home') {
+      navigateRoute({ page: 'home' });
+      window.setTimeout(() => {
+        document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
+      }, 60);
+    } else {
+      document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  useEffect(() => {
+    const onPopState = () => {
+      setRoute(parseAppRoute(window.location.pathname, window.location.search));
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      initialRemoteLoadedRef.current = false;
+      setAuthUser(user);
+      setAuthReady(true);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!authUser || !authUser.emailVerified) return;
+    const unsubscribe = subscribeCollectorProfile(
+      authUser,
+      VALID_PRODUCT_IDS,
+      (profile) => {
+        initialRemoteLoadedRef.current = true;
+        if (!profile) {
+          void syncCollectorProfile(authUser, wishlistIds, recentProductIds, VALID_PRODUCT_IDS);
+          return;
+        }
+        skippingRemoteSyncRef.current = true;
+        setWishlistIds((prev) => {
+          const merged = Array.from(new Set([...profile.wishlistIds, ...prev])).slice(0, 30);
+          return merged;
+        });
+        setRecentProductIds((prev) => {
+          const merged = Array.from(new Set([...prev, ...profile.recentProductIds])).slice(0, 12);
+          return merged;
+        });
+      },
+      (err) => {
+        console.error('Collector profile subscription error:', err);
+      },
+    );
+    return () => unsubscribe();
+  }, [authUser]);
+
+  useEffect(() => {
+    if (!authUser || !authUser.emailVerified || !initialRemoteLoadedRef.current) return;
+    if (skippingRemoteSyncRef.current) {
+      skippingRemoteSyncRef.current = false;
+      return;
+    }
+    void syncCollectorProfile(authUser, wishlistIds, recentProductIds, VALID_PRODUCT_IDS);
+  }, [authUser, wishlistIds, recentProductIds]);
 
   useEffect(() => {
     document.documentElement.lang = language;
@@ -265,6 +380,14 @@ export default function App() {
       // Ignore storage quota errors
     }
   }, [giftWrap]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(GIFT_MESSAGE_STORAGE_KEY, giftMessage);
+    } catch {
+      // Ignore storage quota errors
+    }
+  }, [giftMessage]);
 
   useEffect(() => {
     try {
@@ -313,9 +436,9 @@ export default function App() {
   }, [recentProductIds]);
 
   useEffect(() => {
-    if (!selectedProduct) return;
-    setRecentProductIds((prev) => recordRecentlyViewed(prev, selectedProduct.id));
-  }, [selectedProduct]);
+    if (!activeDetailProduct) return;
+    setRecentProductIds((prev) => recordRecentlyViewed(prev, activeDetailProduct.id));
+  }, [activeDetailProduct]);
 
   useEffect(() => {
     if (!quickLookProduct) return;
@@ -390,12 +513,20 @@ export default function App() {
     setCartItems((prev) => removeCartItem(prev, productId, variantId));
   };
 
+  const handleChangeGiftMessage = (nextMessage: string) => {
+    setGiftMessage(clampGiftMessage(nextMessage));
+  };
+
   const handleSubmitOrder = (customer: CheckoutFormValues) => {
     const orderItems = buildConfirmedOrderItems(cartItems, SOUVENIR_PRODUCTS);
+    const resolvedGiftMessage = formatGiftMessageForOrder(customer.giftMessage || giftMessage);
     const order: ConfirmedOrder = {
       orderNumber: generateOrderNumber(),
       createdAtIso: new Date().toISOString(),
-      customer,
+      customer: {
+        ...customer,
+        giftMessage: resolvedGiftMessage,
+      },
       items: orderItems,
       totals,
     };
@@ -406,11 +537,33 @@ export default function App() {
     ]);
     setCartItems([]);
     setGiftWrap(false);
+    setGiftMessage('');
   };
 
   const handleOpenOrderLookup = (orderNumber = '') => {
     setLookupInitialOrder(orderNumber);
     setIsOrderLookupOpen(true);
+  };
+
+  const handleReorderFromHistory = (order: ConfirmedOrder) => {
+    let addedAny = false;
+    setConfirmedOrder(null);
+    setCartItems((prev) => {
+      let next = prev;
+      for (const item of order.items) {
+        const product = SOUVENIR_PRODUCTS.find((p) => p.id === item.productId);
+        if (!product || !product.inStock) continue;
+        const matchedVariant =
+          product.variants.find((v) => v.label === item.variantLabel) ?? product.variants[0];
+        if (!matchedVariant) continue;
+        next = upsertCartItem(next, product.id, matchedVariant.id, item.quantity);
+        addedAny = true;
+      }
+      return next;
+    });
+    if (addedAny) {
+      setIsBagOpen(true);
+    }
   };
 
   const handleSelectPricePreset = (preset: Exclude<PriceRangePreset, 'custom'>) => {
@@ -486,15 +639,23 @@ export default function App() {
     [restockAlerts],
   );
 
+  const handleOpenProductDetailPage = (product: SouvenirProduct) => {
+    setQuickLookProduct(null);
+    setIsWishlistOpen(false);
+    setIsCompareOpen(false);
+    navigateRoute({ page: 'product-detail', slug: product.slug });
+  };
+
   const handleExploreCategoryFromHero = (category: SouvenirCategory) => {
     setOnlyWishlisted(false);
     setSelectedCategory(category);
     setSearchQuery('');
+    navigateRoute({ page: 'products' });
   };
 
   const handleInspectProductFromHero = (productId: string) => {
     const found = SOUVENIR_PRODUCTS.find((p) => p.id === productId);
-    if (found) setSelectedProduct(found);
+    if (found) handleOpenProductDetailPage(found);
   };
 
   const activeSlide = HERO_SLIDES[activeSlideIndex] ?? HERO_SLIDES[0];
@@ -508,6 +669,8 @@ export default function App() {
       />
 
       <Header
+        currentRoute={route}
+        authUser={authUser}
         bagCount={totals.itemCount}
         cartTotal={totals.total}
         wishlistCount={wishlistProducts.length}
@@ -518,6 +681,8 @@ export default function App() {
         onOpenBag={() => setIsBagOpen(true)}
         onOpenWishlist={() => setIsWishlistOpen(true)}
         onOpenOrderTracking={() => setIsOrderTrackingOpen(true)}
+        onNavigateRoute={(nextRoute) => navigateRoute(nextRoute)}
+        onNavigateSection={navigateHomeSection}
         heroIsDark={false}
         hasAnnouncementBar={isAnnouncementOpen}
       />
@@ -528,68 +693,137 @@ export default function App() {
       />
 
       <BreadcrumbBar
+        currentRoute={route}
+        activeProductTitle={
+          activeDetailProduct ? getProductTitle(activeDetailProduct, language) : null
+        }
         selectedCategory={selectedCategory}
         onlyWishlisted={onlyWishlisted}
         resultCount={filteredProducts.length}
         language={language}
         hasAnnouncementBar={isAnnouncementOpen}
-        onNavigateHome={handleResetFilters}
+        onNavigateHome={() => {
+          handleResetFilters();
+          navigateRoute({ page: 'home' });
+        }}
         onNavigateCatalog={() => {
           setOnlyWishlisted(false);
           setSelectedCategory('All');
+          navigateRoute({ page: 'products' });
         }}
       />
 
       <main className="flex-1">
-        <Hero
-          slides={HERO_SLIDES}
-          activeIndex={activeSlideIndex}
-          language={language}
-          onChangeSlide={setActiveSlideIndex}
-          onExploreCategory={handleExploreCategoryFromHero}
-          onInspectProduct={handleInspectProductFromHero}
-        />
+        {route.page === 'products' ? (
+          <ListProductPage
+            categories={CATEGORIES}
+            selectedCategory={selectedCategory}
+            onSelectCategory={setSelectedCategory}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+            pricePreset={pricePreset}
+            maxPrice={maxPrice}
+            currency={currency}
+            language={language}
+            onSelectPricePreset={handleSelectPricePreset}
+            onMaxPriceChange={handleMaxPriceChange}
+            products={filteredProducts}
+            allProducts={SOUVENIR_PRODUCTS}
+            wishlistIds={wishlistIds}
+            recentProductIds={recentProductIds}
+            onlyWishlisted={onlyWishlisted}
+            onToggleOnlyWishlisted={() => setOnlyWishlisted((prev) => !prev)}
+            onToggleWishlist={handleToggleWishlist}
+            compareIds={compareIds}
+            onToggleCompare={handleToggleCompare}
+            notifiedProductIds={notifiedProductIds}
+            onRequestNotify={setNotifyProduct}
+            onSelectProduct={handleOpenProductDetailPage}
+            onQuickLook={setQuickLookProduct}
+            onQuickAdd={handleQuickAdd}
+            onResetFilters={handleResetFilters}
+            onBackHome={() => navigateRoute({ page: 'home' })}
+          />
+        ) : route.page === 'product-detail' ? (
+          <ProductDetailPage
+            product={activeDetailProduct}
+            allProducts={SOUVENIR_PRODUCTS}
+            reviewsByProduct={userReviewsByProduct}
+            currency={currency}
+            language={language}
+            isWishlisted={
+              activeDetailProduct ? wishlistIds.includes(activeDetailProduct.id) : false
+            }
+            isNotified={
+              activeDetailProduct ? notifiedProductIds.includes(activeDetailProduct.id) : false
+            }
+            onToggleWishlist={handleToggleWishlist}
+            onRequestNotify={setNotifyProduct}
+            onSelectProduct={handleOpenProductDetailPage}
+            onBackToProducts={() => navigateRoute({ page: 'products' })}
+            onBackHome={() => navigateRoute({ page: 'home' })}
+            onAddToBag={handleAddToBag}
+            onSubmitReview={handleAddReview}
+          />
+        ) : route.page === 'login' || route.page === 'signin' ? (
+          <LoginPage
+            mode={route.page === 'signin' ? 'signin' : 'login'}
+            user={authUser}
+            authReady={authReady}
+            wishlistCount={wishlistIds.length}
+            language={language}
+            onSwitchAuthMode={(nextMode) => navigateRoute({ page: nextMode })}
+            onNavigateProducts={() => navigateRoute({ page: 'products' })}
+            onNavigateOrderHistory={() => navigateHomeSection('order-history')}
+          />
+        ) : (
+          <>
+            <Hero
+              slides={HERO_SLIDES}
+              activeIndex={activeSlideIndex}
+              language={language}
+              onChangeSlide={setActiveSlideIndex}
+              onExploreCategory={handleExploreCategoryFromHero}
+              onInspectProduct={handleInspectProductFromHero}
+            />
 
-        <CatalogSection
-          categories={CATEGORIES}
-          selectedCategory={selectedCategory}
-          onSelectCategory={setSelectedCategory}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          sortBy={sortBy}
-          onSortChange={setSortBy}
-          pricePreset={pricePreset}
-          maxPrice={maxPrice}
-          currency={currency}
-          language={language}
-          onSelectPricePreset={handleSelectPricePreset}
-          onMaxPriceChange={handleMaxPriceChange}
-          products={filteredProducts}
-          allProducts={SOUVENIR_PRODUCTS}
-          wishlistIds={wishlistIds}
-          recentProductIds={recentProductIds}
-          onlyWishlisted={onlyWishlisted}
-          onToggleOnlyWishlisted={() => setOnlyWishlisted((prev) => !prev)}
-          onToggleWishlist={handleToggleWishlist}
-          compareIds={compareIds}
-          onToggleCompare={handleToggleCompare}
-          notifiedProductIds={notifiedProductIds}
-          onRequestNotify={setNotifyProduct}
-          onSelectProduct={setSelectedProduct}
-          onQuickLook={setQuickLookProduct}
-          onQuickAdd={handleQuickAdd}
-          onResetFilters={handleResetFilters}
-        />
+            <HomeAtelierShowcase
+              categories={CATEGORIES}
+              language={language}
+              onSelectCategory={handleExploreCategoryFromHero}
+              onOpenAllProductsPage={() => {
+                handleResetFilters();
+                navigateRoute({ page: 'products' });
+              }}
+            />
 
-        <CraftsmanshipSection language={language} />
+            <CraftsmanshipSection language={language} />
 
-        <NewsletterSignup language={language} />
+            <OrderHistorySection
+              placedOrders={placedOrders}
+              products={SOUVENIR_PRODUCTS}
+              currency={currency}
+              language={language}
+              onInspectOrder={handleOpenOrderLookup}
+              onInspectProduct={handleOpenProductDetailPage}
+              onReorder={handleReorderFromHistory}
+            />
+
+            <NewsletterSignup language={language} />
+          </>
+        )}
       </main>
 
       <Footer
         language={language}
         onOpenOrderLookup={handleOpenOrderLookup}
         onOpenOrderTracking={() => setIsOrderTrackingOpen(true)}
+        onNavigateProducts={() => navigateRoute({ page: 'products' })}
+        onNavigateSignIn={() => navigateRoute({ page: 'signin' })}
+        onNavigateLogin={() => navigateRoute({ page: 'login' })}
+        onNavigateSection={navigateHomeSection}
       />
 
       <OrderLookupModal
@@ -609,23 +843,6 @@ export default function App() {
         onClose={() => setIsOrderTrackingOpen(false)}
       />
 
-      <ProductDetailModal
-        product={selectedProduct}
-        allProducts={SOUVENIR_PRODUCTS}
-        userReviews={selectedProduct ? (userReviewsByProduct[selectedProduct.id] ?? []) : []}
-        currency={currency}
-        language={language}
-        isWishlisted={selectedProduct ? wishlistIds.includes(selectedProduct.id) : false}
-        isNotified={selectedProduct ? notifiedProductIds.includes(selectedProduct.id) : false}
-        suppressEscape={Boolean(notifyProduct)}
-        onToggleWishlist={handleToggleWishlist}
-        onRequestNotify={setNotifyProduct}
-        onSelectProduct={setSelectedProduct}
-        onClose={() => setSelectedProduct(null)}
-        onAddToBag={handleAddToBag}
-        onSubmitReview={handleAddReview}
-      />
-
       <QuickLookModal
         product={quickLookProduct}
         currency={currency}
@@ -636,7 +853,7 @@ export default function App() {
         onToggleWishlist={handleToggleWishlist}
         onRequestNotify={setNotifyProduct}
         onAddToBag={handleAddToBag}
-        onOpenFullDetails={setSelectedProduct}
+        onOpenFullDetails={handleOpenProductDetailPage}
         onClose={() => setQuickLookProduct(null)}
       />
 
@@ -653,7 +870,7 @@ export default function App() {
         onAddToBag={handleQuickAdd}
         onRequestNotify={setNotifyProduct}
         onAddAllToBag={handleAddAllWishlistToBag}
-        onInspectProduct={setSelectedProduct}
+        onInspectProduct={handleOpenProductDetailPage}
       />
 
       <CartDrawer
@@ -664,6 +881,8 @@ export default function App() {
         totals={totals}
         giftWrap={giftWrap}
         onToggleGiftWrap={setGiftWrap}
+        giftMessage={giftMessage}
+        onChangeGiftMessage={handleChangeGiftMessage}
         onUpdateQuantity={handleUpdateQuantity}
         onRemoveItem={handleRemoveItem}
         confirmedOrder={confirmedOrder}
@@ -686,7 +905,7 @@ export default function App() {
           setCompareIds([]);
           setIsCompareOpen(false);
         }}
-        onInspectProduct={setSelectedProduct}
+        onInspectProduct={handleOpenProductDetailPage}
         onAddToBag={handleQuickAdd}
         onRequestNotify={setNotifyProduct}
       />
@@ -787,8 +1006,7 @@ export default function App() {
         hasCompareTray={compareProducts.length > 0 && !isCompareOpen}
         hasToast={Boolean(bagNotice || compareNotice)}
         hiddenByOverlay={Boolean(
-          selectedProduct ||
-            quickLookProduct ||
+          quickLookProduct ||
             isBagOpen ||
             isWishlistOpen ||
             isCompareOpen ||

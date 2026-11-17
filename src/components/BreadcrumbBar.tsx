@@ -1,9 +1,11 @@
 import { ChevronRight, Home } from 'lucide-react';
 import type { LanguageCode, SouvenirCategory } from '../types/store';
 import { getCategoryLabel, getTranslations } from '../utils/i18n';
-import { buildBreadcrumbItems } from '../utils/storeLogic';
+import { type AppRoute, buildBreadcrumbItems } from '../utils/storeLogic';
 
 interface BreadcrumbBarProps {
+  currentRoute: AppRoute;
+  activeProductTitle?: string | null;
   selectedCategory: SouvenirCategory;
   onlyWishlisted: boolean;
   resultCount: number;
@@ -14,6 +16,8 @@ interface BreadcrumbBarProps {
 }
 
 export function BreadcrumbBar({
+  currentRoute,
+  activeProductTitle,
   selectedCategory,
   onlyWishlisted,
   resultCount,
@@ -22,19 +26,46 @@ export function BreadcrumbBar({
   onNavigateHome,
   onNavigateCatalog,
 }: BreadcrumbBarProps) {
-  const t = getTranslations(language).breadcrumb;
+  if (currentRoute.page === 'home') {
+    return null;
+  }
+
+  const allT = getTranslations(language);
+  const t = allT.breadcrumb;
   const categoryLabel = getCategoryLabel(selectedCategory, language);
 
-  const items = buildBreadcrumbItems({
-    selectedCategory,
-    onlyWishlisted,
-    labels: {
-      home: t.home,
-      catalog: t.catalog,
-      categoryLabel,
-      saved: t.saved,
-    },
-  });
+  const items =
+    currentRoute.page === 'login'
+      ? [
+          { id: 'home', label: t.home, href: '/', isCurrent: false },
+          { id: 'login', label: allT.header.logIn, href: '/login', isCurrent: true },
+        ]
+      : currentRoute.page === 'signin'
+        ? [
+            { id: 'home', label: t.home, href: '/', isCurrent: false },
+            { id: 'signin', label: allT.header.signIn, href: '/signin', isCurrent: true },
+          ]
+        : currentRoute.page === 'product-detail'
+        ? [
+            { id: 'home', label: t.home, href: '/', isCurrent: false },
+            { id: 'catalog', label: allT.header.productsPage, href: '/products', isCurrent: false },
+            {
+              id: 'product',
+              label: activeProductTitle || currentRoute.slug,
+              href: `/products/${currentRoute.slug}`,
+              isCurrent: true,
+            },
+          ]
+        : buildBreadcrumbItems({
+            selectedCategory,
+            onlyWishlisted,
+            labels: {
+              home: t.home,
+              catalog: allT.header.productsPage,
+              categoryLabel,
+              saved: t.saved,
+            },
+          });
 
   return (
     <div
@@ -59,7 +90,7 @@ export function BreadcrumbBar({
                   <span
                     aria-current="page"
                     data-testid={`breadcrumb-current-${item.id}`}
-                    className="font-semibold text-[#1A1917] truncate"
+                    className="font-semibold text-[#1A1917] truncate max-w-[220px] sm:max-w-xs"
                   >
                     {item.label}
                   </span>
@@ -67,7 +98,8 @@ export function BreadcrumbBar({
                   <a
                     href={item.href}
                     data-testid={`breadcrumb-link-${item.id}`}
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault();
                       if (item.id === 'home') {
                         onNavigateHome();
                       } else if (item.id === 'catalog') {
@@ -87,13 +119,15 @@ export function BreadcrumbBar({
           </ol>
         </nav>
 
-        <p
-          data-testid="breadcrumb-count"
-          className="hidden sm:block text-[11px] font-medium text-[#5E5A54] tabular-nums whitespace-nowrap shrink-0"
-        >
-          {t.showingPrefix} {resultCount}{' '}
-          {resultCount === 1 ? t.showingSingular : t.showingPlural}
-        </p>
+        {currentRoute.page === 'products' && (
+          <p
+            data-testid="breadcrumb-count"
+            className="hidden sm:block text-[11px] font-medium text-[#5E5A54] tabular-nums whitespace-nowrap shrink-0"
+          >
+            {t.showingPrefix} {resultCount}{' '}
+            {resultCount === 1 ? t.showingSingular : t.showingPlural}
+          </p>
+        )}
       </div>
     </div>
   );

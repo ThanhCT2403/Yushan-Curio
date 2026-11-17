@@ -5,6 +5,7 @@ import {
   Award,
   CheckCircle2,
   Minus,
+  PenLine,
   Plus,
   ShoppingBag,
   Trash2,
@@ -24,6 +25,7 @@ import { getProductTitle, getTranslations } from '../utils/i18n';
 import {
   FREE_SHIPPING_THRESHOLD,
   GIFT_WRAP_FEE,
+  MAX_GIFT_MESSAGE_LENGTH,
   calculateLoyaltyPoints,
   formatLoyaltyPoints,
   formatPrice,
@@ -42,6 +44,8 @@ interface CartDrawerProps {
   totals: CartTotals;
   giftWrap: boolean;
   onToggleGiftWrap: (next: boolean) => void;
+  giftMessage: string;
+  onChangeGiftMessage: (message: string) => void;
   onUpdateQuantity: (productId: string, variantId: string, quantity: number) => void;
   onRemoveItem: (productId: string, variantId: string) => void;
   confirmedOrder: ConfirmedOrder | null;
@@ -70,6 +74,8 @@ export function CartDrawer({
   totals,
   giftWrap,
   onToggleGiftWrap,
+  giftMessage,
+  onChangeGiftMessage,
   onUpdateQuantity,
   onRemoveItem,
   confirmedOrder,
@@ -79,7 +85,10 @@ export function CartDrawer({
   onClearConfirmedOrder,
 }: CartDrawerProps) {
   const [view, setView] = useState<DrawerView>('bag');
-  const [formValues, setFormValues] = useState<CheckoutFormValues>(INITIAL_FORM);
+  const [formValues, setFormValues] = useState<CheckoutFormValues>(() => ({
+    ...INITIAL_FORM,
+    giftMessage,
+  }));
   const [errors, setErrors] = useState<CheckoutErrors>({});
 
   useEffect(() => {
@@ -88,8 +97,9 @@ export function CartDrawer({
       setView('confirmed');
     } else {
       setView('bag');
+      setFormValues((prev) => ({ ...prev, giftMessage }));
     }
-  }, [isOpen, confirmedOrder]);
+  }, [isOpen, confirmedOrder, giftMessage]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -141,7 +151,7 @@ export function CartDrawer({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex justify-end bg-[#1A1917]/50 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex justify-end bg-[#1A1917]/55"
       onClick={onClose}
     >
       <div
@@ -419,7 +429,7 @@ export function CartDrawer({
               </ul>
 
               {/* Gift Wrap Toggle */}
-              <div className="rounded-xl border border-[#E4DFD6] bg-[#F2EFE9]/60 p-4">
+              <div className="rounded-xl border border-[#E4DFD6] bg-[#F2EFE9]/60 p-4 space-y-4">
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input
                     type="checkbox"
@@ -441,6 +451,55 @@ export function CartDrawer({
                     </p>
                   </div>
                 </label>
+
+                {/* Optional Personalized Gift Message stored in cart state */}
+                <div className="pt-3.5 border-t border-[#E4DFD6] space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <label
+                      htmlFor="cart-gift-message"
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1A1917]"
+                    >
+                      <PenLine className="w-3.5 h-3.5 text-[#A83226] shrink-0" aria-hidden="true" />
+                      <span>{t.cart.giftMessageTitle}</span>
+                    </label>
+                    {giftMessage.length > 0 && (
+                      <button
+                        type="button"
+                        data-testid="cart-gift-message-clear"
+                        onClick={() => {
+                          onChangeGiftMessage('');
+                          setFormValues((prev) => ({ ...prev, giftMessage: '' }));
+                        }}
+                        className="text-[11px] font-medium text-[#5E5A54] hover:text-[#A83226] transition-colors cursor-pointer"
+                      >
+                        {t.cart.giftMessageClear}
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-xs text-[#5E5A54]">{t.cart.giftMessageSubtitle}</p>
+                  <textarea
+                    id="cart-gift-message"
+                    data-testid="cart-gift-message"
+                    rows={3}
+                    maxLength={MAX_GIFT_MESSAGE_LENGTH}
+                    value={giftMessage}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      onChangeGiftMessage(next);
+                      setFormValues((prev) => ({ ...prev, giftMessage: next }));
+                    }}
+                    placeholder={t.cart.giftMessagePlaceholder}
+                    className="w-full px-3 py-2 rounded-lg border border-[#E4DFD6] bg-[#FAF8F5] text-sm text-[#1A1917] placeholder:text-[#5E5A54]/65 focus:border-[#1A1917] focus:outline-none resize-none"
+                  />
+                  <div className="flex items-center justify-between gap-2 text-[11px] text-[#5E5A54]">
+                    <span>
+                      {giftMessage.trim().length > 0 ? t.cart.giftMessageSavedBadge : ''}
+                    </span>
+                    <span data-testid="cart-gift-message-count" className="tabular-nums">
+                      {giftMessage.length}/{MAX_GIFT_MESSAGE_LENGTH}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           ) : (
@@ -677,8 +736,13 @@ export function CartDrawer({
                 <textarea
                   id="checkout-gift-note"
                   rows={2}
+                  maxLength={MAX_GIFT_MESSAGE_LENGTH}
                   value={formValues.giftMessage}
-                  onChange={(e) => updateField('giftMessage', e.target.value)}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    updateField('giftMessage', next);
+                    onChangeGiftMessage(next);
+                  }}
                   placeholder={t.cart.giftNotePlaceholder}
                   className="w-full px-3.5 py-2 rounded-lg border border-[#E4DFD6] bg-[#FAF8F5] text-sm text-[#1A1917] focus:border-[#1A1917] focus:outline-none resize-none"
                 />
@@ -748,6 +812,7 @@ export function CartDrawer({
                   type="button"
                   onClick={() => {
                     setErrors({});
+                    setFormValues((prev) => ({ ...prev, giftMessage }));
                     setView('checkout');
                   }}
                   className="w-full min-h-[44px] px-5 py-3 rounded-lg bg-[#A83226] text-[#FAF8F5] text-sm font-semibold hover:bg-[#8C271D] transition-colors cursor-pointer"

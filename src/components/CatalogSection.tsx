@@ -1,4 +1,4 @@
-import { ArrowLeftRight, Bell, Check, Eye, Heart, Search, ShoppingBag, X } from 'lucide-react';
+import { ArrowLeftRight, ArrowRight, Bell, Check, Eye, Heart, Search, ShoppingBag, X } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import type {
   CurrencyCode,
@@ -56,6 +56,7 @@ interface CatalogSectionProps {
   onQuickLook: (product: SouvenirProduct) => void;
   onQuickAdd: (product: SouvenirProduct) => void;
   onResetFilters: () => void;
+  onOpenAllProductsPage?: () => void;
   currency: CurrencyCode;
   language: LanguageCode;
 }
@@ -95,11 +96,13 @@ export function CatalogSection({
   onQuickLook,
   onQuickAdd,
   onResetFilters,
+  onOpenAllProductsPage,
   currency,
   language,
 }: CatalogSectionProps) {
   const prefersReducedMotion = useReducedMotion();
-  const t = getTranslations(language).catalog;
+  const allT = getTranslations(language);
+  const t = allT.catalog;
 
   return (
     <section
@@ -130,6 +133,22 @@ export function CatalogSection({
           {products.length === 1 ? t.artifactSingular : t.artifactPlural}
           {t.subtitleSuffix}
         </p>
+        {onOpenAllProductsPage && (
+          <div className="mt-4">
+            <a
+              href="/products"
+              data-testid="home-open-products-page"
+              onClick={(e) => {
+                e.preventDefault();
+                onOpenAllProductsPage();
+              }}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#A83226] hover:text-[#1A1917] underline underline-offset-4 transition-colors"
+            >
+              <span>{allT.pages.openAllProductsCta}</span>
+              <ArrowRight className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+            </a>
+          </div>
+        )}
       </motion.div>
 
       {/* Interactive Filter, Search, Price Range, and Sort Toolbar */}

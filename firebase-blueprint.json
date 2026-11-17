@@ -1,0 +1,66 @@
+{
+  "entities": {
+    "CollectorProfile": {
+      "title": "Collector Profile",
+      "description": "Authenticated collector account preferences, saved wishlist item IDs, and recently viewed craft IDs isolated per owner UID.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Authentication user ID matching the document ID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Verified account email address visible only to the document owner.",
+          "minLength": 3,
+          "maxLength": 254
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Collector display name.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "wishlistIds": {
+          "type": "array",
+          "description": "Bounded list of saved product IDs (max 30)."
+        },
+        "recentProductIds": {
+          "type": "array",
+          "description": "Bounded list of recently viewed product IDs (max 12)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Immutable server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of the last profile update."
+        }
+      },
+      "required": [
+        "uid",
+        "email",
+        "displayName",
+        "wishlistIds",
+        "recentProductIds",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/CollectorProfile"
+      },
+      "description": "Private collector profile document strictly scoped to the authenticated owner (read/write owner-only, zero cross-user listing or shadow fields)."
+    }
+  }
+}

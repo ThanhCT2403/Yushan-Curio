@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState, type FormEvent, type MouseEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import {
-  AlertCircle,
   Bell,
   Check,
   Heart,
@@ -11,6 +10,7 @@ import {
   Star,
   X,
   ZoomIn,
+  ZoomOut,
 } from 'lucide-react';
 import type { CurrencyCode, LanguageCode, ProductReview, SouvenirProduct } from '../types/store';
 import {
@@ -20,22 +20,26 @@ import {
   getTranslations,
 } from '../utils/i18n';
 import {
-  type ReviewFormErrors,
+  type PdpZoomScale,
+  PDP_ZOOM_SCALES,
   buildProductSharePayload,
   computeZoomOriginPercent,
-  createProductReview,
+  filterReviewsByRating,
   formatPrice,
-  getRelatedProducts,
   getReviewSummary,
+  getReviewsForProduct,
+  getSameCategoryProducts,
+  getStarRatingBreakdown,
   getUnitPrice,
-  mergeProductReviews,
-  validateReviewInput,
 } from '../utils/storeLogic';
 import { ProductImage } from './ProductImage';
+import { ProductReviewForm } from './ProductReviewForm';
+import { SocialShareBar } from './SocialShareBar';
 
 interface ProductDetailModalProps {
   product: SouvenirProduct | null;
   allProducts: SouvenirProduct[];
+  reviewsByProduct?: Record<string, ProductReview[]>;
   userReviews?: ProductReview[];
   currency: CurrencyCode;
   language: LanguageCode;
@@ -73,6 +77,7 @@ function StarRatingRow({ rating, label }: { rating: number; label: string }) {
 export function ProductDetailModal({
   product,
   allProducts,
+  reviewsByProduct = {},
   userReviews = [],
   currency,
   language,
@@ -89,32 +94,26 @@ export function ProductDetailModal({
   const [selectedVariantId, setSelectedVariantId] = useState<string>('');
   const [quantity, setQuantity] = useState<number>(1);
   const [shareStatus, setShareStatus] = useState<'idle' | 'shared' | 'copied'>('idle');
-  const [isZoomed, setIsZoomed] = useState<boolean>(false);
+  const [isHoverZoom, setIsHoverZoom] = useState<boolean>(false);
+  const [isPinnedZoom, setIsPinnedZoom] = useState<boolean>(false);
+  const [zoomScale, setZoomScale] = useState<PdpZoomScale>(PDP_ZOOM_SCALES[0]);
   const [zoomOrigin, setZoomOrigin] = useState<{ x: number; y: number }>({ x: 50, y: 50 });
-  const [reviewRating, setReviewRating] = useState<number>(5);
-  const [hoverRating, setHoverRating] = useState<number | null>(null);
-  const [reviewAuthor, setReviewAuthor] = useState<string>('');
-  const [reviewLocation, setReviewLocation] = useState<string>('');
-  const [reviewComment, setReviewComment] = useState<string>('');
-  const [reviewErrors, setReviewErrors] = useState<ReviewFormErrors>({});
-  const [reviewSubmitted, setReviewSubmitted] = useState<boolean>(false);
+  const [ratingFilter, setRatingFilter] = useState<number | 'all'>('all');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const shareTimerRef = useRef<number | null>(null);
+
+  const isZoomed = isHoverZoom || isPinnedZoom;
 
   useEffect(() => {
     if (product) {
       setSelectedVariantId(product.variants[0]?.id ?? '');
       setQuantity(1);
       setShareStatus('idle');
-      setIsZoomed(false);
+      setIsHoverZoom(false);
+      setIsPinnedZoom(false);
+      setZoomScale(PDP_ZOOM_SCALES[0]);
       setZoomOrigin({ x: 50, y: 50 });
-      setReviewRating(5);
-      setHoverRating(null);
-      setReviewAuthor('');
-      setReviewLocation('');
-      setReviewComment('');
-      setReviewErrors({});
-      setReviewSubmitted(false);
+      setRatingFilter('all');
       scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'auto' });
     }
   }, [product]);
@@ -150,54 +149,24 @@ export function ProductDetailModal({
     product.variants.find((v) => v.id === activeVariantId) ?? product.variants[0];
   const unitPrice = getUnitPrice(product, activeVariantId);
   const lineTotal = unitPrice * quantity;
-  const reviews = mergeProductReviews(product.reviews, userReviews);
+  const reviews = getReviewsForProduct(product, reviewsByProduct, userReviews);
   const reviewSummary = getReviewSummary(reviews);
-  const relatedProducts = getRelatedProducts(product, allProducts, 3);
-
-  const handleReviewSubmit = (event: FormEvent) => {
-    event.preventDefault();
-    const validation = validateReviewInput({
-      author: reviewAuthor,
-      location: reviewLocation,
-      rating: reviewRating,
-      comment: reviewComment,
-    });
-    if (!validation.isValid) {
-      setReviewErrors({
-        author: validation.errors.author ? t.pdp.authorError : undefined,
-        rating: validation.errors.rating,
-        comment: validation.errors.comment ? t.pdp.commentError : undefined,
-      });
-      setReviewSubmitted(false);
-      return;
-    }
-
-    const newReview = createProductReview({
-      author: reviewAuthor,
-      location: reviewLocation,
-      rating: reviewRating,
-      comment: reviewComment,
-      variantLabel: activeVariant?.label ?? 'Standard Edition',
-      fallbackLocation: t.pdp.verifiedCollector,
-    });
-
-    onSubmitReview(product.id, newReview);
-    setReviewAuthor('');
-    setReviewLocation('');
-    setReviewComment('');
-    setReviewRating(5);
-    setReviewErrors({});
-    setReviewSubmitted(true);
-  };
+  const starBreakdown = getStarRatingBreakdown(reviews);
+  const filteredReviews = filterReviewsByRating(reviews, ratingFilter);
+  const relatedProducts = getSameCategoryProducts(product, allProducts, 3);
 
   const handleConfirmAdd = () => {
     onAddToBag(product.id, activeVariantId, quantity);
     onClose();
   };
 
-  const scrollToReviews = () => {
-    const el = document.getElementById('pdp-reviews-heading');
-    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const scrollToReviews = (focusComposer = false) => {
+    const targetId = focusComposer ? 'pdp-review-author' : 'pdp-reviews-heading';
+    const el = document.getElementById(targetId);
+    el?.scrollIntoView({ behavior: 'smooth', block: focusComposer ? 'center' : 'start' });
+    if (focusComposer && el instanceof HTMLInputElement) {
+      window.setTimeout(() => el.focus(), 220);
+    }
   };
 
   const scheduleShareReset = () => {
@@ -245,9 +214,13 @@ export function ProductDetailModal({
     setZoomOrigin(computeZoomOriginPercent(event.clientX, event.clientY, rect));
   };
 
+  const handleCycleZoomScale = () => {
+    setZoomScale((prev) => (prev === PDP_ZOOM_SCALES[0] ? PDP_ZOOM_SCALES[1] : PDP_ZOOM_SCALES[0]));
+  };
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-[#1A1917]/55 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-[#1A1917]/60"
       onClick={onClose}
     >
       <div
@@ -312,19 +285,28 @@ export function ProductDetailModal({
             <div
               data-testid="pdp-zoom-container"
               data-zoomed={String(isZoomed)}
-              onMouseEnter={() => setIsZoomed(true)}
+              data-zoom-scale={String(zoomScale)}
+              onMouseEnter={(e) => {
+                setIsHoverZoom(true);
+                handleImageMouseMove(e);
+              }}
               onMouseMove={handleImageMouseMove}
               onMouseLeave={() => {
-                setIsZoomed(false);
-                setZoomOrigin({ x: 50, y: 50 });
+                setIsHoverZoom(false);
+                if (!isPinnedZoom) {
+                  setZoomOrigin({ x: 50, y: 50 });
+                }
               }}
-              className="relative aspect-[4/3] rounded-lg overflow-hidden border border-[#E4DFD6] bg-[#FAF8F5] cursor-zoom-in"
+              className={`relative aspect-[4/3] rounded-lg overflow-hidden border border-[#E4DFD6] bg-[#FAF8F5] ${
+                isZoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'
+              }`}
             >
               <div
                 data-testid="pdp-zoom-surface"
+                onClick={() => setIsPinnedZoom((prev) => !prev)}
                 className="w-full h-full transition-transform duration-150 ease-out motion-reduce:transition-none will-change-transform"
                 style={{
-                  transform: isZoomed ? 'scale(1.85)' : 'scale(1)',
+                  transform: isZoomed ? `scale(${zoomScale})` : 'scale(1)',
                   transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`,
                 }}
               >
@@ -335,13 +317,64 @@ export function ProductDetailModal({
                 />
               </div>
 
+              {isZoomed && (
+                <span
+                  aria-hidden="true"
+                  data-testid="pdp-zoom-reticle"
+                  style={{ left: `${zoomOrigin.x}%`, top: `${zoomOrigin.y}%` }}
+                  className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full border border-[#FAF8F5]/80 ring-1 ring-[#1A1917]/30 shadow-xs transition-[left,top] duration-75 ease-out motion-reduce:transition-none"
+                />
+              )}
+
+              <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+                <button
+                  type="button"
+                  data-testid="pdp-zoom-level-toggle"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCycleZoomScale();
+                    if (!isZoomed) setIsPinnedZoom(true);
+                  }}
+                  aria-label={`${t.pdp.zoomLevelAria} (${zoomScale}x)`}
+                  className="min-h-[40px] px-3 py-1.5 rounded-md bg-[#1A1917]/80 text-[11px] font-semibold text-[#FAF8F5] hover:bg-[#A83226] transition-colors cursor-pointer tabular-nums"
+                >
+                  {zoomScale}×
+                </button>
+                <button
+                  type="button"
+                  data-testid="pdp-zoom-toggle"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isZoomed) {
+                      setIsHoverZoom(false);
+                      setIsPinnedZoom(false);
+                      setZoomOrigin({ x: 50, y: 50 });
+                    } else {
+                      setIsPinnedZoom(true);
+                    }
+                  }}
+                  aria-pressed={isZoomed}
+                  aria-label={isZoomed ? t.pdp.zoomResetAria : t.pdp.zoomActivateAria}
+                  className="w-10 h-10 rounded-md bg-[#1A1917]/80 text-[#FAF8F5] flex items-center justify-center hover:bg-[#A83226] transition-colors cursor-pointer"
+                >
+                  {isZoomed ? (
+                    <ZoomOut className="w-4 h-4" aria-hidden="true" />
+                  ) : (
+                    <ZoomIn className="w-4 h-4" aria-hidden="true" />
+                  )}
+                </button>
+              </div>
+
               <span
-                className={`pointer-events-none absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-md bg-[#1A1917]/80 px-2.5 py-1 text-[11px] font-medium text-[#FAF8F5] transition-opacity duration-150 ${
-                  isZoomed ? 'opacity-0' : 'opacity-100'
-                }`}
+                data-testid="pdp-zoom-status"
+                className="pointer-events-none absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-md bg-[#1A1917]/82 px-2.5 py-1 text-[11px] font-medium text-[#FAF8F5] transition-opacity duration-150 tabular-nums"
               >
-                <ZoomIn className="w-3.5 h-3.5" aria-hidden="true" />
-                <span>{t.pdp.hoverToZoom}</span>
+                <ZoomIn className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                <span>
+                  {isZoomed
+                    ? `${zoomScale}× ${t.pdp.zoomInspectingHint}`
+                    : t.pdp.hoverToZoom}
+                </span>
               </span>
             </div>
 
@@ -379,10 +412,11 @@ export function ProductDetailModal({
                   {formatPrice(unitPrice, currency)}
                 </p>
 
-                {reviewSummary.count > 0 && (
+                {reviewSummary.count > 0 ? (
                   <button
                     type="button"
-                    onClick={scrollToReviews}
+                    data-testid="pdp-rating-summary-trigger"
+                    onClick={() => scrollToReviews(false)}
                     className="inline-flex items-center gap-2 text-xs font-medium text-[#5E5A54] hover:text-[#1A1917] transition-colors cursor-pointer"
                   >
                     <StarRatingRow
@@ -393,6 +427,15 @@ export function ProductDetailModal({
                       {reviewSummary.averageRating.toFixed(1)} · {reviewSummary.count}{' '}
                       {reviewSummary.count === 1 ? t.pdp.reviewSingular : t.pdp.reviewPlural}
                     </span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    data-testid="pdp-rating-write-trigger"
+                    onClick={() => scrollToReviews(true)}
+                    className="text-xs font-medium text-[#A83226] hover:underline cursor-pointer"
+                  >
+                    {t.pdp.writeReviewCta}
                   </button>
                 )}
               </div>
@@ -450,13 +493,13 @@ export function ProductDetailModal({
                         type="button"
                         onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                         aria-label={t.pdp.decreaseQtyAria}
-                        className="w-10 h-11 flex items-center justify-center text-[#1A1917] hover:bg-[#F2EFE9] rounded-l-lg cursor-pointer"
+                        className="w-9 sm:w-10 h-11 flex items-center justify-center text-[#1A1917] hover:bg-[#F2EFE9] rounded-l-lg cursor-pointer"
                       >
                         <Minus className="w-4 h-4" aria-hidden="true" />
                       </button>
                       <span
                         aria-label={t.pdp.selectedQtyAria}
-                        className="w-10 text-center text-sm font-semibold text-[#1A1917] tabular-nums"
+                        className="w-8 sm:w-10 text-center text-sm font-semibold text-[#1A1917] tabular-nums"
                       >
                         {quantity}
                       </span>
@@ -464,7 +507,7 @@ export function ProductDetailModal({
                         type="button"
                         onClick={() => setQuantity((q) => q + 1)}
                         aria-label={t.pdp.increaseQtyAria}
-                        className="w-10 h-11 flex items-center justify-center text-[#1A1917] hover:bg-[#F2EFE9] rounded-r-lg cursor-pointer"
+                        className="w-9 sm:w-10 h-11 flex items-center justify-center text-[#1A1917] hover:bg-[#F2EFE9] rounded-r-lg cursor-pointer"
                       >
                         <Plus className="w-4 h-4" aria-hidden="true" />
                       </button>
@@ -473,7 +516,7 @@ export function ProductDetailModal({
                     <button
                       type="button"
                       onClick={handleConfirmAdd}
-                      className="flex-1 min-h-[44px] px-5 py-3 rounded-lg bg-[#A83226] text-[#FAF8F5] text-sm font-semibold hover:bg-[#8C271D] transition-colors cursor-pointer whitespace-nowrap"
+                      className="flex-1 min-w-0 min-h-[44px] px-3 sm:px-5 py-3 rounded-lg bg-[#A83226] text-[#FAF8F5] text-sm font-semibold hover:bg-[#8C271D] transition-colors cursor-pointer whitespace-nowrap"
                     >
                       {t.pdp.addToBag} · <span className="tabular-nums">{formatPrice(lineTotal, currency)}</span>
                     </button>
@@ -523,6 +566,8 @@ export function ProductDetailModal({
                 <ShieldCheck className="w-4 h-4 text-[#A83226] shrink-0" aria-hidden="true" />
                 <span>{t.pdp.provenanceGuarantee}</span>
               </p>
+
+              <SocialShareBar product={product} language={language} />
             </div>
           </div>
         </div>
@@ -530,6 +575,8 @@ export function ProductDetailModal({
         {/* Customer Reviews Section */}
         <section
           aria-labelledby="pdp-reviews-heading"
+          data-testid="pdp-reviews-section"
+          data-product-id={product.id}
           className="border-t border-[#E4DFD6] bg-[#FAF8F5] p-6 sm:p-8"
         >
           <div className="flex flex-wrap items-baseline justify-between gap-3 pb-4 border-b border-[#E4DFD6]">
@@ -544,7 +591,10 @@ export function ProductDetailModal({
             </div>
 
             {reviewSummary.count > 0 && (
-              <div className="flex items-center gap-2.5 text-sm text-[#1A1917]">
+              <div
+                data-testid="pdp-reviews-summary"
+                className="flex items-center gap-2.5 text-sm text-[#1A1917]"
+              >
                 <StarRatingRow
                   rating={reviewSummary.averageRating}
                   label={`Average rating ${reviewSummary.averageRating} out of 5 stars`}
@@ -560,173 +610,103 @@ export function ProductDetailModal({
             )}
           </div>
 
-          {/* Interactive Review Submission Form */}
-          <form
-            noValidate
-            onSubmit={handleReviewSubmit}
-            data-testid="pdp-review-form"
-            className="mt-5 rounded-xl border border-[#E4DFD6] bg-[#F2EFE9]/65 p-5 space-y-4"
-          >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h4 className="font-display text-lg font-semibold text-[#1A1917]">
-                {t.pdp.writeReviewTitle}
-              </h4>
+          {reviewSummary.count > 0 && (
+            <div className="mt-5 grid grid-cols-1 md:grid-cols-12 gap-5 items-center pb-5 border-b border-[#E4DFD6]">
+              <div
+                aria-label={t.pdp.ratingDistributionAria}
+                className="md:col-span-6 space-y-1.5"
+              >
+                {starBreakdown.map((row) => (
+                  <div key={row.stars} className="flex items-center gap-2.5 text-xs">
+                    <span className="w-8 font-medium text-[#1A1917] tabular-nums shrink-0">
+                      {row.stars} ★
+                    </span>
+                    <div className="flex-1 h-2 rounded-full bg-[#EAE4DA] overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-[#A83226] transition-[width] duration-200 motion-reduce:transition-none"
+                        style={{ width: `${row.percentage}%` }}
+                      />
+                    </div>
+                    <span className="w-8 text-right text-[#5E5A54] tabular-nums shrink-0">
+                      {row.count}
+                    </span>
+                  </div>
+                ))}
+              </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-[#5E5A54]">{t.pdp.ratingLabel}:</span>
-                <div
-                  role="radiogroup"
-                  aria-label={t.pdp.ratingLabel}
-                  className="inline-flex items-center gap-1"
+              <div className="md:col-span-6 flex flex-wrap items-center gap-1.5 md:justify-end">
+                <button
+                  type="button"
+                  data-testid="pdp-review-filter-all"
+                  onClick={() => setRatingFilter('all')}
+                  aria-pressed={ratingFilter === 'all'}
+                  className={`min-h-[40px] px-3.5 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer whitespace-nowrap tabular-nums ${
+                    ratingFilter === 'all'
+                      ? 'bg-[#1A1917] text-[#FAF8F5]'
+                      : 'bg-[#F2EFE9] text-[#5E5A54] hover:text-[#1A1917] hover:bg-[#EAE4DA]'
+                  }`}
                 >
-                  {[1, 2, 3, 4, 5].map((starValue) => {
-                    const activeLevel = hoverRating ?? reviewRating;
-                    const filled = starValue <= activeLevel;
+                  {t.pdp.allRatings} ({reviews.length})
+                </button>
+                {starBreakdown
+                  .filter((row) => row.count > 0)
+                  .map((row) => {
+                    const isActive = ratingFilter === row.stars;
                     return (
                       <button
-                        key={starValue}
+                        key={row.stars}
                         type="button"
-                        role="radio"
-                        data-testid={`pdp-review-star-${starValue}`}
-                        aria-checked={reviewRating === starValue}
-                        aria-label={`${starValue} ${t.pdp.starAriaSuffix}`}
-                        onMouseEnter={() => setHoverRating(starValue)}
-                        onMouseLeave={() => setHoverRating(null)}
-                        onClick={() => {
-                          setReviewRating(starValue);
-                          setReviewSubmitted(false);
-                        }}
-                        className="p-1 rounded hover:scale-110 transition-transform cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#A83226]"
+                        data-testid={`pdp-review-filter-${row.stars}`}
+                        onClick={() => setRatingFilter(isActive ? 'all' : row.stars)}
+                        aria-pressed={isActive}
+                        className={`min-h-[40px] px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer whitespace-nowrap tabular-nums ${
+                          isActive
+                            ? 'bg-[#A83226] text-[#FAF8F5]'
+                            : 'bg-[#F2EFE9] text-[#5E5A54] hover:text-[#1A1917] hover:bg-[#EAE4DA]'
+                        }`}
                       >
-                        <Star
-                          className={`w-4 h-4 ${
-                            filled ? 'fill-[#A83226] text-[#A83226]' : 'text-[#C8C0B4]'
-                          }`}
-                          aria-hidden="true"
-                        />
+                        {row.stars} {t.pdp.starFilterSuffix} ({row.count})
                       </button>
                     );
                   })}
-                </div>
-                <span className="text-xs font-semibold text-[#1A1917] tabular-nums">
-                  {reviewRating}/5
-                </span>
               </div>
             </div>
+          )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <div>
-                <label
-                  htmlFor="pdp-review-author"
-                  className="block text-xs font-semibold text-[#1A1917] mb-1"
-                >
-                  {t.pdp.authorLabel}
-                </label>
-                <input
-                  id="pdp-review-author"
-                  type="text"
-                  value={reviewAuthor}
-                  onChange={(e) => {
-                    setReviewAuthor(e.target.value);
-                    setReviewSubmitted(false);
-                    if (reviewErrors.author) {
-                      setReviewErrors((prev) => ({ ...prev, author: undefined }));
-                    }
-                  }}
-                  aria-invalid={Boolean(reviewErrors.author)}
-                  placeholder={t.pdp.authorPlaceholder}
-                  className="w-full min-h-[40px] px-3 py-2 rounded-lg border border-[#E4DFD6] bg-[#FAF8F5] text-sm text-[#1A1917] focus:border-[#1A1917] focus:outline-none"
-                />
-                {reviewErrors.author && (
-                  <p className="mt-1 flex items-center gap-1 text-xs text-[#A83226]">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                    <span>{reviewErrors.author}</span>
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label
-                  htmlFor="pdp-review-location"
-                  className="block text-xs font-semibold text-[#1A1917] mb-1"
-                >
-                  {t.pdp.locationLabel}
-                </label>
-                <input
-                  id="pdp-review-location"
-                  type="text"
-                  value={reviewLocation}
-                  onChange={(e) => {
-                    setReviewLocation(e.target.value);
-                    setReviewSubmitted(false);
-                  }}
-                  placeholder={t.pdp.locationPlaceholder}
-                  className="w-full min-h-[40px] px-3 py-2 rounded-lg border border-[#E4DFD6] bg-[#FAF8F5] text-sm text-[#1A1917] focus:border-[#1A1917] focus:outline-none"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label
-                htmlFor="pdp-review-comment"
-                className="block text-xs font-semibold text-[#1A1917] mb-1"
-              >
-                {t.pdp.commentLabel}
-              </label>
-              <textarea
-                id="pdp-review-comment"
-                rows={3}
-                value={reviewComment}
-                onChange={(e) => {
-                  setReviewComment(e.target.value);
-                  setReviewSubmitted(false);
-                  if (reviewErrors.comment) {
-                    setReviewErrors((prev) => ({ ...prev, comment: undefined }));
-                  }
-                }}
-                aria-invalid={Boolean(reviewErrors.comment)}
-                placeholder={t.pdp.commentPlaceholder}
-                className="w-full px-3 py-2 rounded-lg border border-[#E4DFD6] bg-[#FAF8F5] text-sm text-[#1A1917] focus:border-[#1A1917] focus:outline-none resize-none"
-              />
-              {reviewErrors.comment && (
-                <p className="mt-1 flex items-center gap-1 text-xs text-[#A83226]">
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                  <span>{reviewErrors.comment}</span>
-                </p>
-              )}
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              {reviewSubmitted ? (
-                <p
-                  data-testid="pdp-review-success"
-                  role="status"
-                  className="inline-flex items-center gap-1.5 text-xs font-medium text-[#2A5A3B]"
-                >
-                  <Check className="w-4 h-4 shrink-0" aria-hidden="true" />
-                  <span>{t.pdp.reviewSubmitted}</span>
-                </p>
-              ) : (
-                <span className="text-[11px] text-[#5E5A54]">
-                  {activeVariant?.label}
-                </span>
-              )}
-
-              <button
-                type="submit"
-                data-testid="pdp-review-submit"
-                className="min-h-[40px] px-5 py-2 rounded-lg bg-[#1A1917] text-[#FAF8F5] text-xs font-semibold hover:bg-[#A83226] transition-colors cursor-pointer"
-              >
-                {t.pdp.submitReview}
-              </button>
-            </div>
-          </form>
+          {/* Dedicated Interactive Review Submission Component */}
+          <div className="mt-5">
+            <ProductReviewForm
+              productId={product.id}
+              productTitle={primaryTitle}
+              variantLabel={activeVariant?.label}
+              language={language}
+              onSubmitReview={(targetProductId, newReview) => {
+                setRatingFilter('all');
+                onSubmitReview(targetProductId, newReview);
+              }}
+            />
+          </div>
 
           {reviews.length === 0 ? (
             <p className="py-8 text-sm text-[#5E5A54] text-center">{t.pdp.noReviews}</p>
+          ) : filteredReviews.length === 0 ? (
+            <div className="py-8 text-center space-y-3">
+              <p className="text-sm text-[#5E5A54]">{t.pdp.noReviewsForRating}</p>
+              <button
+                type="button"
+                onClick={() => setRatingFilter('all')}
+                className="min-h-[40px] px-4 py-2 rounded-lg border border-[#E4DFD6] text-xs font-semibold text-[#1A1917] hover:bg-[#F2EFE9] transition-colors cursor-pointer"
+              >
+                {t.pdp.showAllRatings}
+              </button>
+            </div>
           ) : (
-            <ul className="divide-y divide-[#E4DFD6]" data-testid="customer-reviews-list">
-              {reviews.map((review) => (
+            <ul
+              className="divide-y divide-[#E4DFD6]"
+              data-testid="customer-reviews-list"
+              data-product-id={product.id}
+            >
+              {filteredReviews.map((review) => (
                 <li key={review.id} className="py-5 first:pt-5 last:pb-1">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="text-xs text-[#5E5A54]">
@@ -757,10 +737,12 @@ export function ProductDetailModal({
           )}
         </section>
 
-        {/* You might also like Section */}
+        {/* Recommended for you Section (3 Same-Category Related Products) */}
         {relatedProducts.length > 0 && (
           <section
             aria-labelledby="pdp-related-heading"
+            data-testid="pdp-recommended-section"
+            data-category={product.category}
             className="border-t border-[#E4DFD6] bg-[#F2EFE9]/55 p-6 sm:p-8"
           >
             <div className="mb-5">
@@ -785,16 +767,18 @@ export function ProductDetailModal({
                   <button
                     key={related.id}
                     type="button"
+                    data-testid={`pdp-recommended-card-${related.id}`}
+                    data-category={related.category}
                     onClick={() => onSelectProduct(related)}
                     aria-label={`View ${related.name}`}
-                    className="group text-left rounded-lg border border-[#E4DFD6] bg-[#FAF8F5] overflow-hidden hover:border-[#1A1917]/40 hover:shadow-sm transition-all flex flex-col cursor-pointer"
+                    className="group text-left rounded-lg border border-[#E4DFD6] bg-[#FAF8F5] overflow-hidden hover:border-[#1A1917]/40 hover:shadow-sm transition-all motion-reduce:transition-none flex flex-col cursor-pointer"
                   >
                     <div className="aspect-[4/3] w-full bg-[#F2EFE9] overflow-hidden">
                       <ProductImage
                         src={related.image}
                         alt={related.imageAlt}
                         fallbackTitle={relatedTitle}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03] motion-reduce:transition-none"
                       />
                     </div>
                     <div className="p-3.5 flex-1 flex flex-col justify-between gap-2">

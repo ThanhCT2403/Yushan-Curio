@@ -139,8 +139,11 @@ export function Hero({
 
             <div className="pt-2 flex flex-wrap items-center gap-3">
               <a
-                href="#collection"
-                onClick={() => onExploreCategory(activeSlide.ctaCategory)}
+                href="/products"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onExploreCategory(activeSlide.ctaCategory);
+                }}
                 className={`inline-flex items-center justify-center px-6 py-3 min-h-[44px] rounded-full text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                   isDark
                     ? 'bg-[#E5C185] text-[#1A120C] hover:bg-[#FAF8F5]'

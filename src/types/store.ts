@@ -88,6 +88,12 @@ export interface CartItem {
   quantity: number;
 }
 
+export interface CartState {
+  items: CartItem[];
+  giftWrap: boolean;
+  giftMessage: string;
+}
+
 export interface CartTotals {
   itemCount: number;
   subtotal: number;

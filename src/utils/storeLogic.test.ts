@@ -7,47 +7,63 @@ import {
   ANNOUNCEMENT_MESSAGES,
   CURRENCY_CODES,
   SEASONAL_PROMO_DURATION_MS,
+  LOYALTY_POINTS_PER_USD,
+  MAX_GIFT_MESSAGE_LENGTH,
+  PDP_ZOOM_SCALES,
+  SCROLL_TO_TOP_THRESHOLD,
   buildBreadcrumbItems,
+  buildOrderHistoryEntries,
   buildProductSharePayload,
+  buildRoutePath,
+  buildSocialShareUrls,
   calculateCartTotals,
+  calculateLoyaltyPoints,
+  clampGiftMessage,
   computeEstimatedDeliveryDate,
   computeZoomOriginPercent,
   convertFromUsd,
   createProductReview,
+  executeNativeShare,
   filterAndSortProducts,
+  filterReviewsByRating,
+  findProductBySlug,
+  formatGiftMessageForOrder,
+  formatLoyaltyPoints,
   formatPrice,
   formatTimeRemaining,
-  getTimeRemainingParts,
-  mergeProductReviews,
-  trackOrderWithEmail,
-  validateReviewInput,
   getCategoryThumbnail,
   getCompareProducts,
   getNextAnnouncementIndex,
   getNextSlideIndex,
+  getOrderStatusCounts,
   getPrevSlideIndex,
   getRecommendedProducts,
   getRelatedProducts,
   getRestockAlert,
   getReviewSummary,
+  getReviewsForProduct,
+  getSameCategoryProducts,
+  getStarRatingBreakdown,
+  getTimeRemainingParts,
   getWishlistProducts,
-  recordRecentlyViewed,
-  LOYALTY_POINTS_PER_USD,
-  SCROLL_TO_TOP_THRESHOLD,
-  calculateLoyaltyPoints,
-  formatLoyaltyPoints,
   lookupOrderStatus,
+  mergeProductReviews,
   normalizeOrderNumber,
+  parseAppRoute,
+  recordRecentlyViewed,
   removeCartItem,
   resolveProductFromUrl,
+  sanitizeCollectorProfilePayload,
   shouldShowScrollToTop,
   toggleCompareItem,
   toggleWishlistItem,
+  trackOrderWithEmail,
   updateCartItemQuantity,
   upsertCartItem,
   upsertRestockAlert,
   validateCheckoutForm,
   validateNewsletterEmail,
+  validateReviewInput,
 } from './storeLogic';
 import {
   LANGUAGE_CODES,
@@ -617,8 +633,8 @@ test('catalog badges and Quick Buy / PDP Zoom & Share strings localize cleanly',
   assert.equal(getTranslations('zh-CN').catalog.quickBuy, '快速加购');
   assert.equal(getTranslations('en').pdp.share, 'Share');
   assert.equal(getTranslations('zh-CN').pdp.share, '分享');
-  assert.equal(getTranslations('en').pdp.hoverToZoom, 'Hover to zoom');
-  assert.equal(getTranslations('zh-CN').pdp.hoverToZoom, '悬停放大细节');
+  assert.equal(getTranslations('en').pdp.hoverToZoom, 'Hover to inspect craftsmanship');
+  assert.equal(getTranslations('zh-CN').pdp.hoverToZoom, '悬停鉴赏手作细节');
 });
 
 test('getCategoryThumbnail resolves distinct thumbnails for every category with safe fallback', () => {
@@ -1005,4 +1021,341 @@ test('trackOrderWithEmail validates email & order number and computes estimated 
   assert.equal(getTranslations('zh-CN').orderTracking.title, '订单物流追踪');
 });
 
+test('gift message clamping/formatting and PDP zoom scales localize and enforce bounds cleanly', () => {
+  assert.equal(MAX_GIFT_MESSAGE_LENGTH, 240);
+  assert.deepEqual([...PDP_ZOOM_SCALES], [2.25, 3]);
+
+  const overLimit = 'A'.repeat(265);
+  assert.equal(clampGiftMessage(overLimit).length, 240);
+  assert.equal(clampGiftMessage('  Happy Birthday  '), '  Happy Birthday  ');
+  assert.equal(formatGiftMessageForOrder('   \n  Happy Anniversary!  \t '), 'Happy Anniversary!');
+  assert.equal(formatGiftMessageForOrder('   '), '');
+  assert.equal(formatGiftMessageForOrder(overLimit).length, 240);
+
+  const en = getTranslations('en');
+  const zh = getTranslations('zh-CN');
+
+  assert.equal(en.cart.giftMessageTitle, 'Personalized Gift Message (Optional)');
+  assert.equal(zh.cart.giftMessageTitle, '个性化礼品寄语（选填）');
+  assert.ok(en.cart.giftMessageSavedBadge.length > 0);
+  assert.ok(zh.cart.giftMessageSavedBadge.length > 0);
+  assert.ok(en.cart.giftMessageClear.length > 0);
+  assert.ok(zh.cart.giftMessageClear.length > 0);
+
+  assert.equal(en.pdp.hoverToZoom, 'Hover to inspect craftsmanship');
+  assert.equal(zh.pdp.hoverToZoom, '悬停鉴赏手作细节');
+  assert.ok(en.pdp.zoomInspectingHint.length > 0);
+  assert.ok(zh.pdp.zoomInspectingHint.length > 0);
+  assert.ok(en.pdp.zoomActivateAria.length > 0);
+  assert.ok(zh.pdp.zoomResetAria.length > 0);
+});
+
+test('getReviewsForProduct, getStarRatingBreakdown, and filterReviewsByRating isolate and summarize reviews by product ID', () => {
+  const porcelainProduct: SouvenirProduct = {
+    ...MOCK_PRODUCTS[0],
+    reviews: [
+      {
+        id: 'seed-1',
+        author: 'Eleanor',
+        location: 'UK',
+        rating: 5,
+        date: 'Oct 10, 2026',
+        variantLabel: 'Standard',
+        comment: 'Crisp brushwork.',
+      },
+    ],
+  };
+
+  const celadonProduct: SouvenirProduct = {
+    ...MOCK_PRODUCTS[1],
+    reviews: [
+      {
+        id: 'seed-2',
+        author: 'Daniel',
+        location: 'Korea',
+        rating: 4,
+        date: 'Oct 11, 2026',
+        variantLabel: '3-Piece',
+        comment: 'Warm glaze.',
+      },
+    ],
+  };
+
+  const userReviewPorcelain = createProductReview(
+    {
+      author: 'Kenji',
+      location: 'Kyoto',
+      rating: 2,
+      comment: 'Lid fit is good though glaze tone was lighter.',
+      variantLabel: 'Wood Box',
+    },
+    new Date('2026-11-17T06:00:00.000Z'),
+  );
+
+  const reviewsMap = {
+    [porcelainProduct.id]: [userReviewPorcelain],
+  };
+
+  // Resolves dynamically by product.id without cross-product bleed
+  const porcelainReviews = getReviewsForProduct(porcelainProduct, reviewsMap);
+  assert.equal(porcelainReviews.length, 2);
+  assert.equal(porcelainReviews[0].author, 'Kenji');
+  assert.equal(porcelainReviews[1].author, 'Eleanor');
+
+  const celadonReviews = getReviewsForProduct(celadonProduct, reviewsMap);
+  assert.equal(celadonReviews.length, 1);
+  assert.equal(celadonReviews[0].author, 'Daniel');
+
+  assert.deepEqual(getReviewsForProduct(null, reviewsMap), []);
+
+  // Star breakdown & filter
+  const breakdown = getStarRatingBreakdown(porcelainReviews);
+  assert.deepEqual(
+    breakdown.map((row) => ({ stars: row.stars, count: row.count, percentage: row.percentage })),
+    [
+      { stars: 5, count: 1, percentage: 50 },
+      { stars: 4, count: 0, percentage: 0 },
+      { stars: 3, count: 0, percentage: 0 },
+      { stars: 2, count: 1, percentage: 50 },
+      { stars: 1, count: 0, percentage: 0 },
+    ],
+  );
+
+  assert.equal(filterReviewsByRating(porcelainReviews, 'all').length, 2);
+  assert.equal(filterReviewsByRating(porcelainReviews, 2).length, 1);
+  assert.equal(filterReviewsByRating(porcelainReviews, 2)[0].author, 'Kenji');
+  assert.equal(filterReviewsByRating(porcelainReviews, 1).length, 0);
+
+  const en = getTranslations('en').pdp;
+  const zh = getTranslations('zh-CN').pdp;
+  assert.equal(en.allRatings, 'All Ratings');
+  assert.equal(zh.allRatings, '全部评分');
+  assert.ok(en.writeReviewCta.length > 0);
+  assert.ok(zh.writeReviewCta.length > 0);
+});
+
+test('buildOrderHistoryEntries merges, dedupes, sorts newest-first, and counts statuses accurately', () => {
+  const newOrder: ConfirmedOrder = {
+    ...SAMPLE_CONFIRMED_ORDERS[0].order,
+    orderNumber: 'YS-9012',
+    createdAtIso: '2026-11-17T08:00:00.000Z',
+  };
+
+  // Placed order overriding a seeded order number (case-insensitive) should dedupe cleanly
+  const overrideSeeded: ConfirmedOrder = {
+    ...SAMPLE_CONFIRMED_ORDERS[1].order,
+    orderNumber: 'ys-2088',
+    createdAtIso: '2026-11-17T09:00:00.000Z',
+  };
+
+  const merged = buildOrderHistoryEntries(
+    [newOrder, overrideSeeded],
+    SAMPLE_CONFIRMED_ORDERS,
+    'all',
+  );
+
+  // Should contain 4 unique orders: YS-2088 (overridden by placed), YS-9012, YS-2114, YS-2041
+  assert.equal(merged.length, 4);
+  assert.deepEqual(
+    merged.map((e) => e.order.orderNumber),
+    ['ys-2088', 'YS-9012', 'YS-2114', 'YS-2041'],
+  );
+  assert.equal(merged[0].source, 'user');
+  assert.equal(merged[0].status, 'Processing');
+  assert.equal(merged[2].source, 'sample');
+  assert.equal(merged[3].status, 'Delivered');
+
+  const counts = getOrderStatusCounts(merged);
+  assert.deepEqual(counts, {
+    all: 4,
+    Processing: 3,
+    Shipped: 0,
+    Delivered: 1,
+  });
+
+  // With original seeded sample orders only
+  const seededOnly = buildOrderHistoryEntries([], SAMPLE_CONFIRMED_ORDERS, 'all');
+  assert.deepEqual(
+    seededOnly.map((e) => e.order.orderNumber),
+    ['YS-2114', 'YS-2088', 'YS-2041'],
+  );
+  assert.deepEqual(getOrderStatusCounts(seededOnly), {
+    all: 3,
+    Processing: 1,
+    Shipped: 1,
+    Delivered: 1,
+  });
+
+  const shippedOnly = buildOrderHistoryEntries([], SAMPLE_CONFIRMED_ORDERS, 'Shipped');
+  assert.equal(shippedOnly.length, 1);
+  assert.equal(shippedOnly[0].order.orderNumber, 'YS-2088');
+
+  const en = getTranslations('en');
+  const zh = getTranslations('zh-CN');
+  assert.equal(en.orderHistory.heading, 'Order History');
+  assert.equal(zh.orderHistory.heading, '历史订单记录');
+  assert.equal(en.header.orderHistoryLink, 'Order History');
+  assert.equal(zh.header.orderHistoryLink, '历史订单');
+});
+
+test('getSameCategoryProducts returns up to 3 distinct items strictly from the viewed item category', () => {
+  const sameCategoryCatalog: SouvenirProduct[] = [
+    ...MOCK_PRODUCTS,
+    { ...MOCK_PRODUCTS[0], id: 'p2', slug: 'p2', name: 'Porcelain 2', featuredRank: 4 },
+    { ...MOCK_PRODUCTS[0], id: 'p3', slug: 'p3', name: 'Porcelain 3', featuredRank: 5 },
+    { ...MOCK_PRODUCTS[0], id: 'p4', slug: 'p4', name: 'Porcelain 4', featuredRank: 6 },
+    { ...MOCK_PRODUCTS[0], id: 'p5', slug: 'p5', name: 'Porcelain 5', featuredRank: 7 },
+  ];
+
+  const picked = getSameCategoryProducts(sameCategoryCatalog[0], sameCategoryCatalog, 3);
+  assert.equal(picked.length, 3);
+  assert.deepEqual(
+    picked.map((p) => p.id),
+    ['p2', 'p3', 'p4'],
+  );
+  assert.equal(picked.every((p) => p.category === 'Porcelain'), true);
+  assert.equal(picked.some((p) => p.id === sameCategoryCatalog[0].id), false);
+
+  // Sparse mock: returns only same-category items without cross-category leaks
+  const sparsePicked = getSameCategoryProducts(MOCK_PRODUCTS[0], MOCK_PRODUCTS, 3);
+  assert.equal(sparsePicked.length, 0);
+
+  // Localization check for Recommended for you modal heading
+  assert.equal(getTranslations('en').pdp.relatedHeading, 'Recommended for you');
+  assert.equal(getTranslations('zh-CN').pdp.relatedHeading, '为您推荐');
+});
+
+test('buildSocialShareUrls and executeNativeShare handle Facebook, Twitter, Pinterest, AbortError, and clipboard fallback', async () => {
+  const payload = buildProductSharePayload(
+    MOCK_PRODUCTS[0],
+    'Qinghua Mountain Tea Caddy',
+    'https://yunshancurio.example.com/?category=Porcelain',
+  );
+  const urls = buildSocialShareUrls(payload, 'https://yunshancurio.example.com/caddy.png');
+
+  assert.match(urls.facebook, /^https:\/\/www\.facebook\.com\/sharer\/sharer\.php\?u=/);
+  assert.match(urls.facebook, /product%3Dporcelain-jar/);
+  assert.match(urls.twitter, /^https:\/\/twitter\.com\/intent\/tweet\?text=/);
+  assert.match(
+    urls.twitter,
+    /url=https%3A%2F%2Fyunshancurio\.example\.com%2F%3Fcategory%3DPorcelain%26product%3Dporcelain-jar/,
+  );
+  assert.match(urls.pinterest, /^https:\/\/pinterest\.com\/pin\/create\/button\/\?url=/);
+  assert.match(urls.pinterest, /media=https%3A%2F%2Fyunshancurio\.example\.com%2Fcaddy\.png/);
+
+  // 1. Native share invoked when navigator.share is available
+  let sharedPayload: unknown = null;
+  const nativeOutcome = await executeNativeShare(
+    payload,
+    async (data) => {
+      sharedPayload = data;
+    },
+    async () => {
+      throw new Error('Clipboard should not run when native share succeeds');
+    },
+  );
+  assert.equal(nativeOutcome, 'shared');
+  assert.deepEqual(sharedPayload, payload);
+
+  // 2. User cancellation via AbortError is silent
+  const abortOutcome = await executeNativeShare(
+    payload,
+    async () => {
+      const err = new Error('Share canceled');
+      err.name = 'AbortError';
+      throw err;
+    },
+    async () => {},
+  );
+  assert.equal(abortOutcome, 'aborted');
+
+  // 3. Falls back to clipboard copy when navigator.share is unavailable
+  let copiedUrl = '';
+  const fallbackOutcome = await executeNativeShare(
+    payload,
+    null,
+    async (text) => {
+      copiedUrl = text;
+    },
+  );
+  assert.equal(fallbackOutcome, 'copied');
+  assert.equal(copiedUrl, payload.url);
+
+  // 4. Falls back to clipboard copy if navigator.share rejects with non-AbortError
+  let fallbackCopied = '';
+  const rejectedOutcome = await executeNativeShare(
+    payload,
+    async () => {
+      throw new Error('NotAllowedError');
+    },
+    async (text) => {
+      fallbackCopied = text;
+    },
+  );
+  assert.equal(rejectedOutcome, 'copied');
+  assert.equal(fallbackCopied, payload.url);
+
+  // 5. Localization labels
+  const enPdp = getTranslations('en').pdp;
+  const zhPdp = getTranslations('zh-CN').pdp;
+  assert.equal(enPdp.shareFacebook, 'Facebook');
+  assert.equal(enPdp.shareTwitter, 'Twitter');
+  assert.equal(enPdp.sharePinterest, 'Pinterest');
+  assert.equal(zhPdp.shareFacebook, 'Facebook');
+  assert.equal(zhPdp.shareTwitter, 'Twitter');
+  assert.equal(zhPdp.sharePinterest, 'Pinterest');
+  assert.equal(zhPdp.shareSectionLabel, '分享此件器物');
+});
+
+test('parseAppRoute, buildRoutePath, findProductBySlug, and sanitizeCollectorProfilePayload work accurately', () => {
+  assert.deepEqual(parseAppRoute('/'), { page: 'home' });
+  assert.deepEqual(parseAppRoute('/products'), { page: 'products' });
+  assert.deepEqual(parseAppRoute('/products/'), { page: 'products' });
+  assert.deepEqual(parseAppRoute('/signin'), { page: 'signin' });
+  assert.deepEqual(parseAppRoute('/login'), { page: 'login' });
+  assert.deepEqual(parseAppRoute('/products/porcelain-jar'), {
+    page: 'product-detail',
+    slug: 'porcelain-jar',
+  });
+  assert.deepEqual(parseAppRoute('/', '?product=porcelain-jar'), {
+    page: 'product-detail',
+    slug: 'porcelain-jar',
+  });
+
+  assert.equal(buildRoutePath({ page: 'home' }), '/');
+  assert.equal(buildRoutePath({ page: 'products' }), '/products');
+  assert.equal(buildRoutePath({ page: 'signin' }), '/signin');
+  assert.equal(buildRoutePath({ page: 'login' }), '/login');
+  assert.equal(
+    buildRoutePath({ page: 'product-detail', slug: 'porcelain-jar' }),
+    '/products/porcelain-jar',
+  );
+
+  assert.equal(findProductBySlug(MOCK_PRODUCTS, 'porcelain-jar')?.id, 'porcelain-jar');
+  assert.equal(findProductBySlug(MOCK_PRODUCTS, 'nonexistent'), null);
+
+  const sanitized = sanitizeCollectorProfilePayload(
+    {
+      uid: 'uid_alice_123',
+      email: 'alice@example.com',
+      displayName: '   Alice Chen   ',
+      wishlistIds: ['p1', 'p1', 'bad id!', 'unknown-id'],
+      recentProductIds: ['p1'],
+    },
+    new Set(['p1']),
+  );
+  assert.equal(sanitized.uid, 'uid_alice_123');
+  assert.equal(sanitized.displayName, 'Alice Chen');
+  assert.deepEqual(sanitized.wishlistIds, ['p1']);
+  assert.deepEqual(sanitized.recentProductIds, ['p1']);
+
+  const en = getTranslations('en');
+  const zh = getTranslations('zh-CN');
+  assert.equal(en.header.productsPage, 'Products');
+  assert.equal(en.header.signIn, 'Sign In');
+  assert.equal(en.header.logIn, 'Log In');
+  assert.equal(zh.header.productsPage, '全部藏品');
+  assert.equal(zh.header.signIn, '加入名录');
+  assert.equal(zh.header.logIn, '账号登录');
+});
 
